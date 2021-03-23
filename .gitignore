@@ -1,3 +1,7 @@
+# (Added by Liam to the GitHub Python template)
+# Emacs auto-save files
+*~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
