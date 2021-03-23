@@ -5,7 +5,8 @@ found in no other Linux<->HP 48 transfer tool.
 
 This is a manual describing most of HPex's features. I've tried to
 make it as simple as possible, but watch out for things marked
-**Important:**. These are pitfalls and possible areas of confusion.
+**Important:**, as well as those marked in bold. These are pitfalls
+and possible areas of confusion.
 # System Requirements
 
 **Important:** HPex is designed to run on Linux. It will probably work
@@ -278,8 +279,6 @@ will make a little dialog explaining what happened (there are others,
 but these are some examples):
 
 ![Kermit device error](manual_photos/kermit_device_error.png)
-
-![Kermit too many retries error](manual_photos/kermit_too_many_retries.png)
 
 All Kermit and XModem operations are threaded and use PyPubSub to
 generate events within HPex, and I have actually never managed to make
