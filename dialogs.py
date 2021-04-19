@@ -55,7 +55,7 @@ class KermitErrorDialog(wx.Frame):
             wx.StaticText(
                 self,
                 wx.ID_ANY,
-                "Kermit failed. Here's what it said:"), 
+                "Kermit failed, with this error:"), 
             0,
             wx.EXPAND | wx.ALL)
             

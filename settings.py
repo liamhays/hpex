@@ -29,6 +29,7 @@ class HPexSettingsTools:
     # because only HPexSettings ever needs it.
 class HPexSettings:
     def __init__(self, startup_dir='~',
+                 kermit_executable='ckermit',
                  baud_rate='9600', file_mode='Auto',
                  parity='0 (None)', kermit_cksum='3',
                  disable_pty_search=False,
@@ -37,6 +38,7 @@ class HPexSettings:
                  ask_for_overwrite=True):
         
         self.startup_dir = startup_dir
+        self.kermit_executable = kermit_executable
         self.baud_rate = baud_rate
         self.file_mode = file_mode
         self.parity = parity
@@ -48,6 +50,7 @@ class HPexSettings:
     def __str__(self):
         return (
             'startup_dir: ' + str(self.startup_dir) +
+            '  kermit_executable: ' + str(self.kermit_executable) +
             '  baud_rate: ' + str(self.baud_rate) +
             '  file_mode: ' + str(self.file_mode) +
             '  parity: ' + str(self.parity) +
@@ -84,6 +87,14 @@ class SettingsFrame(wx.Frame):
         self.main_sizer.Add(
             self.startup_dir_chooser, pos=(0, 1))
 
+        self.main_sizer.Add(
+            wx.StaticText(
+                self, wx.ID_ANY, 'Kermit name:'),
+            pos=(1, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
+
+        self.kermit_executable_box = wx.TextCtrl(self)
+        self.main_sizer.Add(self.kermit_executable_box, pos=(1, 1))
+        self.kermit_executable_box.SetValue(self.current_settings.kermit_executable)
         # while the 48 only supports the first four baud rates, the 49
         # supports 15360, and the 49g+ and 50g, over USB, are fixed at
         # 115200. While the 50g also supports other rates through the
@@ -163,50 +174,50 @@ class SettingsFrame(wx.Frame):
         self.main_sizer.Add(
             wx.StaticText(
                 self, wx.ID_ANY, 'Baud rate:'),
-            pos=(1, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
+            pos=(2, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
         
-        self.main_sizer.Add(self.baud_rate_choice, pos=(1, 1))
+        self.main_sizer.Add(self.baud_rate_choice, pos=(2, 1))
 
         self.main_sizer.Add(
             wx.StaticText(
                 self, wx.ID_ANY, 'Parity:'),
-            pos=(2, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
+            pos=(3, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
         
-        self.main_sizer.Add(self.parity_choice, pos=(2, 1))
+        self.main_sizer.Add(self.parity_choice, pos=(3, 1))
         
         self.main_sizer.Add(
             wx.StaticText(
                 self, wx.ID_ANY, 'Kermit file mode:'),
-            pos=(3, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
+            pos=(4, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
         
-        self.main_sizer.Add(self.file_mode_choice, pos=(3, 1))
+        self.main_sizer.Add(self.file_mode_choice, pos=(4, 1))
 
         
         self.main_sizer.Add(
             wx.StaticText(
                 self, wx.ID_ANY, 'Kermit checksum mode:'),
-            pos=(4, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
+            pos=(5, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
 
-        self.main_sizer.Add(self.kermit_cksum_choice, pos=(4, 1))
+        self.main_sizer.Add(self.kermit_cksum_choice, pos=(5, 1))
 
         
         self.main_sizer.Add(
-            self.pty_search_check, pos=(5, 0), span=(1, 2))
+            self.pty_search_check, pos=(6, 0), span=(1, 2))
 
         self.main_sizer.Add(
-            self.disconnect_on_close_check, pos=(6, 0), span=(1, 2))
+            self.disconnect_on_close_check, pos=(7, 0), span=(1, 2))
 
         self.main_sizer.Add(
-            self.reset_on_disconnect_check, pos=(7, 0), span=(1, 2))
+            self.reset_on_disconnect_check, pos=(8, 0), span=(1, 2))
 
         self.main_sizer.Add(
-            self.ask_for_overwrite_check, pos=(8, 0), span=(1, 2))
+            self.ask_for_overwrite_check, pos=(9, 0), span=(1, 2))
         self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.button_sizer.Add(self.ok_button, 1, flag=wx.EXPAND)
         self.button_sizer.Add(self.cancel_button, 1, flag=wx.EXPAND)
 
         self.main_sizer.Add(
-            self.button_sizer, pos=(9, 0), span=(1, 2), flag=wx.EXPAND)
+            self.button_sizer, pos=(10, 0), span=(1, 2), flag=wx.EXPAND)
         self.SetSizerAndFit(self.main_sizer)
         self.Show(True)
 
@@ -215,6 +226,7 @@ class SettingsFrame(wx.Frame):
         # Nothing we can really do about these lines...
         self.current_settings.startup_dir = self.startup_dir_chooser.GetPath()
         self.current_settings.baud_rate = self.baud_rate_choices[self.baud_rate_choice.GetSelection()]
+        self.current_settings.kermit_executable = self.kermit_executable_box.GetValue()
         self.current_settings.parity = self.parity_choices[self.parity_choice.GetSelection()]
         self.current_settings.file_mode = self.file_mode_choices[self.file_mode_choice.GetSelection()]
         self.current_settings.kermit_cksum = self.kermit_cksum_choices[self.kermit_cksum_choice.GetSelection()]

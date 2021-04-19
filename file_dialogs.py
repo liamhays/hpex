@@ -185,7 +185,8 @@ class FileSendDialog(wx.Frame):
         self.progress_text.SetLabelText('Progress:' + extra_text)
         self.progress_bar.SetValue(0)
         self.cancel_button.Disable()
-
+        self.copy_button.Enable()
+        
     def xmodem_newdata(self, file_count, total,
                        success, error, should_update):
 
@@ -310,9 +311,10 @@ class FileSendDialog(wx.Frame):
         if not self.xmodem:
             if self.kermit_connector.isalive():
                 self.kermit_connector.cancel_kermit()
+                self.copy_button.Enable()
         else:
             self.xmodem_connector.cancel()
-
+            self.copy_button.Enable()
 
     def on_close(self, event):
         # unsubscribe to prevent accessing deleted objects
@@ -462,7 +464,7 @@ class FileGetDialog(wx.Frame):
     def reset_progress(self, extra_text=''):
         self.progress_text.SetLabelText('Progress:' + extra_text)
         self.cancel_button.Disable()
-
+        self.copy_button.Enable()
         
     def kermit_newdata(self, data, cmd):
         # if kermit fails, we'll get an empty value, which will cause
@@ -531,7 +533,6 @@ class FileGetDialog(wx.Frame):
             self.success_callback.__call__()
             
     def run_kermit(self, event):
-
         # we're not going to worry about moving, because we can't
         # differentiate easily between directories and variables
 
@@ -556,12 +557,13 @@ class FileGetDialog(wx.Frame):
         # lets us check if we've already written 'Progress: not
         # available when receiving' to self.progress_text
         self.already_wrote_label = False
+        self.copy_button.Disable()
         self.cancel_button.Enable()
         
     def cancel(self, event):
         if self.kermit_connector.isalive():
             self.kermit_connector.cancel_kermit()
-
+            self.copy_button.Enable()
 
 
     

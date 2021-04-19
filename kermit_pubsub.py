@@ -45,23 +45,25 @@ class KermitConnector:
         # 'set send timeout 1', 'set receive timeout 1', and 'set
         # retry-limit 1' all tell Kermit not to wait very long for
         # packets.
-        invocation = ['kermit', '-Y', '-H', '-C', 'set parity none,set flow none,set carrier-watch off,set modem type direct,set block 3,set control prefix all,set protocol kermit,set send timeout 1,set receive timeout 1,set retry-limit 1,set file display crt,set file names literal,set hints off,set quiet on,']
+        
 
         # load alt_options if we choose to use them, otherwise, use
         # the settings file
         if not alt_options:
-            settings = HPexSettingsTools.load_settings()
+            self.settings = HPexSettingsTools.load_settings()
         else:
-            settings = alt_options
-            
-        file_mode = settings.file_mode
+            self.settings = alt_options
+
+        invocation = [self.settings.kermit_executable, '-Y', '-H', '-C', 'set parity none,set flow none,set carrier-watch off,set modem type direct,set block 3,set control prefix all,set protocol kermit,set send timeout 1,set receive timeout 1,set retry-limit 1,set file display crt,set file names literal,set hints off,set quiet on,']
+        
+        file_mode = self.settings.file_mode
         if file_mode == 'Binary':
             invocation[-1] += 'set file type binary,'
         elif file_mode == 'ASCII':
             invocation[-1] += 'set file type text,'
         # no else, we just won't do anything if it's set to Auto
         
-        parity = settings.parity
+        parity = self.settings.parity
         # '0 (None)', '1 (Odd)', '2 (Even)', '3 (Mark)', '4 (Space)'
         
         # we check if the number is in the parity value, because the
@@ -77,7 +79,7 @@ class KermitConnector:
         elif parity == '4 (Space)':
             invocation[-1] += 'set parity space,'
 
-        cksum = settings.kermit_cksum
+        cksum = self.settings.kermit_cksum
         # kermit_cksum is just a number in a string, so we can append
         # it directly
 
@@ -90,11 +92,17 @@ class KermitConnector:
         invocation.append('-l')
         invocation.append(port)
         invocation.append('-b')
-        invocation.append(settings.baud_rate)
+        invocation.append(self.settings.baud_rate)
 
-
-        self.proc = ptyprocess.PtyProcessUnicode.spawn(invocation)
-        
+        try:
+            self.proc = ptyprocess.PtyProcessUnicode.spawn(invocation)
+        except FileNotFoundError as e:
+            wx.CallAfter(
+                pub.sendMessage,
+                f'kermit.failed.{self.ptopic}',
+                cmd=self.command,
+                out=str(e))
+            return
         self.out = ''
 
 
