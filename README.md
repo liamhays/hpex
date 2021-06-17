@@ -27,10 +27,10 @@ present in some distros' repositories.
 
 The other requirements are:
 
-1. (xmodem)[https://pypi.org/project/xmodem/]
-2. (PyPubSub)[https://pypi.org/project/PyPubSub/] (note that this is different from (pubsub)[https://pypi.org/project/pubsub/])
-3. (ptyprocess)[https://pypi.org/project/ptyprocess/]
-4. (pyserial)[https://pypi.org/project/pyserial/]
+1. [xmodem](https://pypi.org/project/xmodem/)
+2. [PyPubSub](https://pypi.org/project/PyPubSub/) (note that this is different from [pubsub](https://pypi.org/project/pubsub/))
+3. [ptyprocess](https://pypi.org/project/ptyprocess/)
+4. [pyserial](https://pypi.org/project/pyserial/)
 
 Install these with `sudo pip3 install xmodem PyPubSub ptyprocess
 pyserial`. Or by hand, if you prefer.
@@ -206,8 +206,8 @@ size---which includes the filename---and the checksum.
 **Important:** while the code that generates the object checksum and
 size is my own, the actual binary math and overall routine **IS NOT
 MINE**. It's my C->Python conversion of version 2.52 of Jonathan
-Higa's `TASC` program from (Joe Horn's Goodies Disk
-\#7)[https://www.hpcalc.org/hp48/compilations/horn/horn7.zip]. You can
+Higa's `TASC` program from [Joe Horn's Goodies Disk
+\#7](https://www.hpcalc.org/hp48/compilations/horn/horn7.zip). You can
 see the modified C code from `TASC` in `ckfinder_old.c`.
 
 Finally, let's finish copying the file. You can choose to make Kermit
@@ -313,13 +313,13 @@ The special things important to note about the CLI are:
 the CLI. You must use `hpex.py` for both the GUI and the CLI.
 
 An example of when I like to use the CLI is in a scenario like this:
-I'm working on some System RPL project, that I build with (Jonathan
-Busby's HP Tools patch)[https://www.hpcalc.org/details/8971] and I
-want to run it on `x48` so that I don't have to hook up my physical
-calculator. I can build the project then run a simple command to send
-the file to the emulator, like `python hpex.py -p /dev/pts/4 -d
-CALENDAR`. It's much easier than prompting a new Kermit terminal every
-time.
+I'm working on some System RPL project, that I build with [Jonathan
+Busby's excellent HP Tools patch](https://www.hpcalc.org/details/8971)
+and I want to run it on `x48` so that I don't have to hook up my
+physical calculator. I can build the project then run a simple command
+to send the file to the emulator, like `python hpex.py -p /dev/pts/4
+-d CALENDAR`. It's much easier than prompting a new Kermit terminal
+every time.
 
 # Troubleshooting
 ## CKermit issues on Arch
