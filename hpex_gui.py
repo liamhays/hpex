@@ -890,6 +890,12 @@ class HPexGUI(wx.Frame):
         # This function is responsible for both connecting and
         # disconnecting. If we're connected, we disconnect, and if
         # we're disconnected, we connect.
+        if self.serial_port_box.GetValue() == '':
+            print('empty serial port box')
+            wx.MessageDialog(self, 'Serial port box is empty! Cannot reach calculator.',
+                             caption='Serial error',
+                             style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
+            return
         self.kermit_connector = KermitConnector()
         
         if not self.connected:

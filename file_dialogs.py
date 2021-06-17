@@ -467,36 +467,10 @@ class FileGetDialog(wx.Frame):
         self.copy_button.Enable()
         
     def kermit_newdata(self, data, cmd):
-        # if kermit fails, we'll get an empty value, which will cause
-        # an error
-        
-        # we don't need to note that error, because it will be caught
-        # by self.kermit_response
-
-        # also, when we're receiving, the HP server doesn't send any
-        # info about the filesize, so we can't make a useful progress
-        # report. instead, we just check to see if it's finished.
-        
-        # This is a way to read the data from Kermit. It splits on
-        # whitespace, then iterates over the split parts, looking for
-        # a percent sign. If it finds 100, the transfer is done,
-        # otherwise, it writes the value to the progress bar.
-        try:
-            if '%' in data:
-                spl = data.split()
-                for l in spl:
-                    if '%' in l:
-                        if '100' in l:
-                            self.progress_text.SetLabelText(
-                                f'Progress: Done!')
-                        elif not self.already_wrote_label:
-                            print('not already_wrote_label')
-                            self.already_wrote_label = True
-                            self.progress_text.SetLabelText(
-                                'Progress: not available when receiving')
-
-        except:
-            pass
+        if not self.already_wrote_label:
+            self.already_wrote_label = True
+            self.progress_text.SetLabelText(
+                'Progress: not available when receiving')
         
 
     def kermit_failed(self, cmd, out):
