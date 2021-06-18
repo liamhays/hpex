@@ -3,7 +3,7 @@ import math
 
 import xmodem
 from pubsub import pub
-import wx
+
 import serial
 
 from settings import HPexSettingsTools
@@ -17,6 +17,17 @@ class XModemConnector:
         
     def run(self, port, parent, fname, ptopic,
             use_callafter=True, alt_options=None): # ptopic for parent
+        if use_callafter:
+            # So this is kind of a kludge. We don't want to globally
+            # import wx if we'r erunning in the CLI, to keep it light
+            # and fast, but we can't conditionally globally
+            # import. However, we /can/ import wx in each and every
+            # function that needs it, _if and only if_
+            # self.use_callafter is true. This is because the only
+            # thing this class (and KermitConnector) uses wx for is
+            # CallAfter, for thread-safety.
+            import wx
+            
         # I don't think it's readily possible to receive files over
         # XModem. I won't add that feature, then, at least for now.
         self.port = port
@@ -57,6 +68,7 @@ class XModemConnector:
         #print(baud)
         #print(parity)
         #print(settings.parity)
+        # we aren't catching serial.serialutil.SerialExceptions
         try:
             self.ser = serial.Serial(
                 # short timeout so we get something like what Kermit
@@ -115,6 +127,8 @@ class XModemConnector:
         self.ser.close()
 
     def send_callback(self, total_packets, success_count, error_count):
+        if self.use_callafter:
+            import wx
         #print(total_packets, success_count)
         if success_count == self.packet_count: # done
 
@@ -165,6 +179,7 @@ class XModemConnector:
         self.modem.abort(timeout=2)
 
         if self.use_callafter:
+            import wx
             wx.CallAfter(
                 pub.sendMessage,
                 f'xmodem.cancelled.{self.ptopic}',

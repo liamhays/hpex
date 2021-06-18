@@ -9,8 +9,8 @@ from helpers import FileTools, KermitProcessTools
 from file_dialogs import FileGetDialog, FileSendDialog
 from dialogs import KermitConnectingDialog, RemoteCommandDialog, KermitErrorDialog, ObjectInfoDialog
 from kermit_pubsub import KermitConnector
-from settings import SettingsFrame, HPexSettingsTools
-
+from settings import HPexSettingsTools
+from settings_frame import SettingsFrame
 
 class HPexGUI(wx.Frame):
     # The calculator has to be in translate mode 3, the most
@@ -956,3 +956,4 @@ class HPexGUI(wx.Frame):
         # If Kermit fails here, HPex will stop for a short moment
         # until Kermit gives up. I don't think this is an issue.
         self.Destroy()
+

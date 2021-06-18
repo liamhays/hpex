@@ -1,6 +1,6 @@
 import signal
 
-import wx
+
 from pubsub import pub
 import ptyprocess
 
@@ -16,10 +16,16 @@ class KermitConnector:
     
     def run(self, port, parent, command, ptopic,
             do_newdata_event=True, use_callafter=True,
-            alt_options=None):
+            alt_options=None, use_wx=True):
+        """Connect to the calculator and run `command`."""
+        if use_callafter:
+            # See XModemConnector in xmodem_pubsub.py for an
+            # explanation of what and why every function has a 'if
+            # self.use_callafter' check.
+            import wx
         # when wx isn't running, CallAfter is unnecessary and actually
         # doesn't even work.
-        """Connect to the calculator and run `command`."""
+
         
         self.cancelled = False
         self.parent = parent
@@ -223,6 +229,7 @@ class KermitConnector:
 
 
         if self.use_callafter:
+            import wx
             wx.CallAfter(
                 pub.sendMessage,
                 f'kermit.cancelled.{self.ptopic}',

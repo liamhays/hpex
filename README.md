@@ -11,7 +11,7 @@ and possible areas of confusion.
 
 **Important:** HPex is designed to run on Linux. It will probably work
 on Mac (though you should use
-(Hoppi)[https://bitbucket.org/pdo/hoppi2] there), and I'm sure it
+[Hoppi](https://bitbucket.org/pdo/hoppi2) there), and I'm sure it
 won't work on Windows.
 
 Because the HP 48's main communication system is Kermit, you'll need
@@ -21,9 +21,11 @@ Kermit site](http://www.columbia.edu/kermit/ck90.html#download), and
 probably in your distro's package manager too. The only other
 requirement that can't be installed through pip is
 [wxPython](https://wxpython.org/). I'm not going to explain how to
-install this, because it's highly distro-dependent---but if you're not
-going to use the GUI part of HPex, you don't need it. Again, it's
-present in some distros' repositories.
+install this, because it's highly distro-dependent.
+
+Note that if you don't want to use HPex's GUI and use only the CLI,
+you don't actually need wxPython. However, all the other dependencies
+are still needed.
 
 The other requirements are:
 

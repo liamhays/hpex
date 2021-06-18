@@ -1,19 +1,16 @@
 #!/usr/bin/python3
 import sys
 
-class HPex:
+class HPex(object):
     # This is the main dispatcher class for all of HPex's
     # operations. It checks for arguments, and if it finds them, it
     # parses them and sends them to HPexCLI. Without arguments, it
     # calls HPexGUI and runs from there.
     def __init__(self):
         if len(sys.argv) > 1:
+#            print(sys.modules.keys())
             # user passed command-line arguments, figure out what they
             # are
-
-            # eventually this should probably use some kind of
-            # dispatch, where arguments load HPexCLI while no
-            # arguments loads an HPexGUI class.
 
             # import argparse later, and only if needed, because we
             # want to make this as fast as possible to start from the
@@ -73,18 +70,21 @@ class HPex:
             parser.add_argument(
                 '-a', '--asname',
                 nargs=1, help='Name to send file as in Kermit mode')
-            
-            from hpex_cli import HPexCLI
-            HPexCLI(parser.parse_args())
-            return
 
-        # otherwise, do GUI
-        import wx
-        from hpex_gui import HPexGUI
-        app = wx.App(False)
-        HPexGUI(None)
-        
-        app.MainLoop()
+            # hpex_cli is importing wx, because kermit_pubsub,
+            # xmodem_pubsub, and settings all rely on wx.
+            from hpex_cli import HPexCLI
+            #print(sys.modules.keys())
+            HPexCLI(parser.parse_args())
+
+        else:
+            # otherwise, do GUI
+            import wx
+            app = wx.App(False)
+            from hpex_gui import HPexGUI
+            HPexGUI(None)
+            app.MainLoop()
+
             
 
 if __name__ == '__main__':

@@ -6,14 +6,16 @@ from pathlib import Path
 from pubsub import pub
 
 from settings import HPexSettings, HPexSettingsTools
+
 from kermit_pubsub import KermitConnector
 from xmodem_pubsub import XModemConnector
 from helpers import FileTools, KermitProcessTools, XModemProcessTools
 
 class HPexCLI:
     def __init__(self, args):
+        print('__init__')
         #print(args)
-
+#        print(sys.modules.keys())
         # if the file doesn't exist (or is a directory), don't even try.
         self.filename = Path(args.input_file[0])
         if not args.get:
