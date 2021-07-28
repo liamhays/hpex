@@ -98,7 +98,7 @@ class FileSendDialog(wx.Frame):
                 file_message),
             1,
             wx.EXPAND | wx.ALL)
-
+        
         self.label_sizer.Add(self.file_contents_box)
 
         # only show this if we're in Kermit mode
@@ -111,19 +111,17 @@ class FileSendDialog(wx.Frame):
                     self,
                     wx.ID_ANY,
                     'Rename on calculator:'),
-                1,
-                wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+                wx.ALIGN_CENTER_VERTICAL)
             self.as_name_sizer.Add(
-                self.as_name_box, 1, wx.EXPAND | wx.ALL)
+                self.as_name_box, wx.EXPAND | wx.RIGHT)
             self.as_name_box.SetValue(self.basename)
-            
+            self.label_sizer.Add(self.as_name_sizer)
+        
         self.progress_text = wx.StaticText(
             self,
             wx.ID_ANY,
             'Progress:')
 
-        if not self.xmodem:
-            self.label_sizer.Add(self.as_name_sizer)
         self.label_sizer.Add(
             self.progress_text,
             1,
