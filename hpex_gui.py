@@ -63,15 +63,13 @@ class HPexGUI(wx.Frame):
             self.run_ckfinder_item)
         
         self.run_hp_command_item = self.hp_menu.Append(
-           wx.ID_ANY, 'Run remote command...',
-           'Run command on the calculator')
+            wx.ID_ANY, 'Run remote command...',
+            'Run command on the calculator')
 
         self.Bind(
-           wx.EVT_MENU,
-           lambda e: RemoteCommandDialog(
-               self,
-               self.serial_port_box.GetValue()).go(),
-           self.run_hp_command_item)
+            wx.EVT_MENU,
+            self.start_remote_command_dialog,
+            self.run_hp_command_item)
         
         self.menubar.Append(self.file_menu, '&File')
         self.menubar.Append(self.local_menu, '&Local')
@@ -573,6 +571,15 @@ class HPexGUI(wx.Frame):
         
 
     def double_click_on_local_file(self, event):
+        # basically just housekeeping; after all,
+        # it's no use trying to send a file if we're
+        # not connected over Kermit (obviously there's
+        # no way to connect over XModem)
+        if not self.connected and not self.xmodem_mode:
+            # however, let's be kind to the user and
+            # tell them what's going on
+            self.SetStatusText('Not connected, so not going to send file')
+            return
         # Double-clicking a local file is very similar to
         # double-clicking a remote file, albeit with a few more
         # options and usable progress.
@@ -649,7 +656,17 @@ class HPexGUI(wx.Frame):
 
             else:
                 self.SetStatusText(f"'{dirname}' is not a directory.")
-                
+
+    def start_remote_command_dialog(self, event=None):
+        # the only way to be connected is to be in Kermit mode,
+        # so we only need to check one variable
+        if self.connected:
+            RemoteCommandDialog(
+                self,
+                self.serial_port_box.GetValue()).go()
+        else:
+            self.SetStatusText('Not connected, so remote commands are unavailable')
+            
     def update_internal_kermit_data(self, output):
         # This is one of the most important functions in this entire
         # program. It takes the output from Kermit, runs it through
