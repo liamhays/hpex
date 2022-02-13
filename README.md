@@ -370,6 +370,9 @@ If Kermit still fails, try setting root setgid on the `ckermit`
 executable with `sudo chmod g+s /usr/bin/ckermit`. This works because
 the lock file, `/var/lock`, is owned by `root`.
 
+If *that* doesn't work, try `sudo chmod a+w /var/lock`. This will give
+Kermit permission to write to `/var/lock`.
+
 ## "The command was not found or it was not executable:"
 Make sure the Kermit executable name is set properly in Settings. It's
 likely either `ckermit` or `kermit`, but you should check in a shell

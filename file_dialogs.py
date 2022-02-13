@@ -12,13 +12,14 @@ from helpers import KermitProcessTools, XModemProcessTools
 from settings import HPexSettingsTools
 
 
+# Because the GUI is drag and drop-based, the transfer dialogs start a
+# transfer on initialization.
 class FileSendDialog(wx.Frame):
-    def __init__(self, parent, title, message,
-                 file_message, port, filename,
+    def __init__(self, parent, file_message, port, filename,
                  remote_files, use_xmodem=False,
                  success_callback=None):
         
-        wx.Frame.__init__(self, parent, title=title)
+        wx.Frame.__init__(self, parent, title='Send ' + filename.name)
         
         self.port = port
         self.filename = filename
@@ -78,16 +79,6 @@ class FileSendDialog(wx.Frame):
 
         self.label_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        
-        self.label_sizer.Add(
-            wx.StaticText(
-                self,
-                wx.ID_ANY,
-                message),
-            0,
-            wx.EXPAND | wx.ALL)
-
         self.file_contents_box = wx.StaticBoxSizer(
             wx.VERTICAL, self, 'File info')
 
@@ -101,67 +92,39 @@ class FileSendDialog(wx.Frame):
         
         self.label_sizer.Add(self.file_contents_box)
 
-        # only show this if we're in Kermit mode
-        if not self.xmodem:
-            self.as_name_sizer = wx.BoxSizer(wx.HORIZONTAL)
-            self.as_name_box = wx.TextCtrl(self)
-            
-            self.as_name_sizer.Add(
-                wx.StaticText(
-                    self,
-                    wx.ID_ANY,
-                    'Rename on calculator:'),
-                wx.ALIGN_CENTER_VERTICAL)
-            self.as_name_sizer.Add(
-                self.as_name_box, wx.EXPAND | wx.RIGHT)
-            self.as_name_box.SetValue(self.basename)
-            self.label_sizer.Add(self.as_name_sizer)
+        # No 'rename on calculator' option anymore.
         
         self.progress_text = wx.StaticText(
             self,
             wx.ID_ANY,
             'Progress:')
 
-        self.label_sizer.Add(
-            self.progress_text,
-            1,
-            wx.EXPAND | wx.ALL | wx.ALIGN_LEFT)
+        self.label_sizer.Add(self.progress_text)
         
         self.progress_bar = wx.Gauge(self)
-        self.label_sizer.Add(self.progress_bar, 1, wx.EXPAND)
+        self.label_sizer.Add(self.progress_bar, 1, wx.EXPAND | wx.RIGHT)
         
         self.cancel_button = wx.Button(
             self, wx.ID_CANCEL, 'Cancel')
 
         self.cancel_button.Disable()
 
-        self.copy_button = wx.Button(
-            self, wx.ID_ANY, 'Copy', name='copybutton')
-
-        self.button_sizer.Add(
-            self.copy_button, 1, wx.EXPAND | wx.ALL)
-
-        self.button_sizer.Add(
-            self.cancel_button, 1, wx.EXPAND | wx.ALL)
-
-        self.copy_button.Bind(wx.EVT_BUTTON, self.run_transfer)
         self.cancel_button.Bind(wx.EVT_BUTTON, self.cancel)
         
         self.transfer_sizer.Add(
             self.label_sizer, 0,
             wx.EXPAND | wx.ALL)
-            
-        self.transfer_sizer.Add(
-            self.button_sizer, 0,
-            wx.EXPAND | wx.ALL)
 
+        self.transfer_sizer.Add(
+            self.cancel_button, 0,
+            wx.EXPAND | wx.ALL)
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.SetSizerAndFit(self.transfer_sizer)
 
         self.Show(True)
         self.Update()
 
-
+        self.run_transfer(event=None)
 
     def kermit_newdata(self, data, cmd):
         # if kermit fails, we'll get an empty value, which will cause
@@ -183,7 +146,6 @@ class FileSendDialog(wx.Frame):
         self.progress_text.SetLabelText('Progress:' + extra_text)
         self.progress_bar.SetValue(0)
         self.cancel_button.Disable()
-        self.copy_button.Enable()
         
     def xmodem_newdata(self, file_count, total,
                        success, error, should_update):
@@ -224,7 +186,8 @@ class FileSendDialog(wx.Frame):
     def xmodem_done(self, file_count, total, success, error):
         # xmodem worked, clear stuff up
         self.reset_progress(' Done!')
-
+        self.on_close(event=None)
+        
     def xmodem_cancelled(self, file_count):
         self.reset_progress(' XModem transfer cancelled.')
         self.parent.SetStatusText(
@@ -268,18 +231,12 @@ class FileSendDialog(wx.Frame):
         if callable(self.success_callback):
             self.success_callback.__call__()
         
-
+        self.on_close(event=None)
+        
     def run_transfer(self, event):
         if not self.xmodem:
-            command = ''
-            # the user wants a different name
-            if self.as_name_box.GetValue() != self.basename:
-                asname = self.as_name_box.GetValue()
-                command += f'send /as-name:{asname} {self.filename}'
-            else:
-                command += f'send {self.filename}'
+            command = f'send {self.filename}'
                 
-            print(command)
             # this code is basically the same as the connecting code
             self.kermit_connector = KermitConnector()
             
@@ -302,17 +259,14 @@ class FileSendDialog(wx.Frame):
 
             self.reset_progress(' Run XRECV now.')
 
-        self.copy_button.Disable()
         self.cancel_button.Enable()
         
     def cancel(self, event):
         if not self.xmodem:
             if self.kermit_connector.isalive():
                 self.kermit_connector.cancel_kermit()
-                self.copy_button.Enable()
         else:
             self.xmodem_connector.cancel()
-            self.copy_button.Enable()
 
     def on_close(self, event):
         # unsubscribe to prevent accessing deleted objects
