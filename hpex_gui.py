@@ -1,5 +1,7 @@
 import threading
 
+# global TODO: Kermit/XModem threads should extend Thread class
+# global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
 from pathlib import Path
 
 import wx
@@ -19,7 +21,6 @@ class HPTextDropTarget(wx.TextDropTarget):
         wx.TextDropTarget.__init__(self)
         self.window = window
         self.topic = 'HPex'
-        print('window is', window)
         
     def OnDropText(self, x, y, data):
         print('data is', data)
@@ -33,10 +34,10 @@ class LocalTextDropTarget(wx.TextDropTarget):
     def __init__(self, window):
         wx.TextDropTarget.__init__(self)
         self.window = window
-        print('window is', window)
+        self.topic = 'HPex'
         
     def OnDropText(self, x, y, data):
-        print('data is', data)
+        print('data in local text is', data)
         return True
 
     
@@ -247,7 +248,8 @@ class HPexGUI(wx.Frame):
         self.hp_files.InsertColumn(1, 'Size (bytes)')
         self.hp_files.InsertColumn(2, 'Type')
         self.hp_files.InsertColumn(3, 'Checksum')
-        
+
+        self.hp_files.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.hp_item_activated)
         
         #### Drag and Drop initialization
         # we need separate drop targets for both listctrls
@@ -336,7 +338,7 @@ class HPexGUI(wx.Frame):
 
         # like I said, this should be configurable---either XModem or
         # Kermit on startup
-        self.set_kermit_ui_layout(None)
+        self.set_kermit_ui_layout(event=None)
         self.hp_home_button.Disable()
         self.hp_updir_button.Disable()
         self.hp_files.Enable()
@@ -391,9 +393,22 @@ class HPexGUI(wx.Frame):
         
         self.kermit.start()
 
-    # TODO: you should only be able to drag onto the other listctrl
+    # restore the drop targets to both listboxes
+    # this function is needed when a transfer fails
+    def make_drop_targets(self):
+        local_drop_target = LocalTextDropTarget(self.local_files)
+        self.local_files.SetDropTarget(local_drop_target)
+        hp_drop_target = HPTextDropTarget(self.hp_files)
+        self.hp_files.SetDropTarget(hp_drop_target)
+        
     # TODO: implement Kermit send without server connection
+    # TODO: while the "drag to only one box" solution works,
+    #       it has state issues with a failure
     def local_file_drag(self, event):
+        # If we remove the drop target, you can't drop here, so the
+        # interface seems more normal: you can only drop on the other
+        # listctrl. The same thing is implemented in hp_file_drag.
+        self.local_files.SetDropTarget(None)
         file_path = Path(
             self.current_local_path,
             self.local_files.GetItemText(
@@ -403,12 +418,28 @@ class HPexGUI(wx.Frame):
         # trigger the drop event
         data = wx.TextDataObject(str(file_path))
         drop_source = wx.DropSource(self.local_files)
-
         drop_source.SetData(data)
         drop_source.DoDragDrop(True)
 
+        # we have to recreate the object every time (as opposed to
+        # making one in __init__), otherwise we get an 'object
+        # deleted' error.
+        local_drop_target = LocalTextDropTarget(self.local_files)
+        self.local_files.SetDropTarget(local_drop_target)
+        
     def hp_file_drag(self, event):
-        print(event)
+        self.hp_files.SetDropTarget(None)
+        sel_index = self.hp_files.GetFirstSelected()
+        varname = self.hpvars[sel_index]
+
+        data = wx.TextDataObject(varname)
+        drop_source = wx.DropSource(self.hp_files)
+        drop_source.SetData(data)
+        drop_source.DoDragDrop(True)
+        
+        hp_drop_target = HPTextDropTarget(self.hp_files)
+        self.hp_files.SetDropTarget(hp_drop_target)
+        
         
     def disable_on_disconnect(self):
         # These two functions are pretty obvious. Clear and disable or
@@ -603,7 +634,26 @@ class HPexGUI(wx.Frame):
             # populate, not refresh, because refresh has the selection
             # magic which we don't want to use here
             self.populate_local_files()
+
+        # TODO: need statusbar update here
         
+    def hp_item_activated(self, event):
+        sel_index = self.hp_files.GetFirstSelected()
+        varname = self.hpvars[sel_index]
+
+        if self.hptypes[sel_index] == 'Directory':
+            self.kermit_connector = KermitConnector()
+            print('varname', varname)
+            self.kermit = threading.Thread(
+                target=self.kermit_connector.run,
+                args=(self.serial_port_box.GetValue(),
+                      self,
+                      'remote host ' + f'{varname}' + ' EVAL',
+                      self.topic,
+                      False))
+            self.kermit.start()
+
+            
     def refresh_hp_files(self):
         if self.connected:
             # same thing here as in the local update...
@@ -618,19 +668,20 @@ class HPexGUI(wx.Frame):
 
             # ...except now we spawn Kermit to do the directory
             # scanning for us.
-            self.SetStatusText('Updating remote variables...')
+            self.SetStatusText(f'Changing calculator directory to {self.hp_selection}...')
             self.kermit_connector = KermitConnector()
             
             self.kermit = threading.Thread(
                 target=self.kermit_connector.run,
                 args=(self.serial_port_box.GetValue(),
                       self,
-                      'remote directory',
+                      f"remote host '{self.hp_selection}' EVAL",
                       self.topic,
                       False))
             
             self.kermit.start()
 
+            
     def double_click_on_hp_file(self, event):
         # Double-clicking (or pressing Enter, or Space) selects the
         # item, which brings up the FileGetDialog, allowing you to
@@ -688,35 +739,6 @@ class HPexGUI(wx.Frame):
             self.hpvars,
             self.xmodem_mode,
             self.refresh_all_files)
-
-    # def hp_key(self, event):
-    #     # tab, delete, and backspace, because they're easy to reach,
-    #     # all change directory
-    #     k = event.GetKeyCode()
-    #     if k in (wx.WXK_TAB, wx.WXK_DELETE, wx.WXK_BACK):
-    #         self.updating_remote_path = True # set to false later
-            
-    #         sel_index = event.GetItem().GetId()
-    #         dirname = self.hpvars[sel_index]
-    #         if self.hptypes[sel_index] == 'Directory':
-    #             self.SetStatusText(
-    #                 f"Changing calculator directory to '{dirname}'")
-                
-    #             # it is a directory, so we'll change paths
-    #             self.kermit_connector = KermitConnector()
-                
-    #             self.kermit = threading.Thread(
-    #                 target=self.kermit_connector.run,
-    #                 args=(self.serial_port_box.GetValue(),
-    #                       self,
-    #                       f"remote host '{dirname}' EVAL",
-    #                       self.topic,
-    #                       False))
-                
-    #             self.kermit.start()
-
-    #         else:
-    #             self.SetStatusText(f"'{dirname}' is not a directory.")
 
     def start_remote_command_dialog(self, event=None):
         # the only way to be connected is to be in Kermit mode,
@@ -798,6 +820,7 @@ class HPexGUI(wx.Frame):
         # If Kermit failed, notify the user, correct various states,
         # and tell them what Kermit said (why it failed).
         print('kermit failed in HPex')
+        print(out)
         if cmd == 'finish':
             self.SetStatusText("Couldn't finish Kermit server on " +
                                self.serial_port_box.GetValue()
@@ -806,19 +829,29 @@ class HPexGUI(wx.Frame):
             print('kermit failed on finish')
             KermitErrorDialog(self, out).Show(True)
             return
-            
+
         self.connecting_dialog.Close()
-        self.connect_button.SetLabel('Connect') # just in case
-        self.connected = False # also just in case
-        self.SetStatusText(
-            "Kermit couldn't reach " +
-            self.serial_port_box.GetValue() + '.')
+
 
         # Kermit likes to add blank lines and other junk to the
         # output, so this just cleans those up.
         out = KermitProcessTools.strip_blank_lines(out)
         # do some stuff with Kermit's output and stderr
         KermitErrorDialog(self, out).Show(True)
+
+        # empty the remote listctrl and return to disconnected mode
+        self.hp_files.DeleteAllItems()
+        self.connect_button.SetLabel('Connect') # just in case
+        self.disable_on_disconnect()
+        self.connected = False # also just in case
+        self.SetStatusText(
+            "Kermit couldn't reach " +
+            self.serial_port_box.GetValue() + '.')
+
+
+        # we must restore the drop targets here, because a failure
+        # means they aren't restored in the drag callback
+        self.make_drop_targets()
         
     def kermit_done(self, cmd, out):
         # This function is very large and quite complicated. Read
@@ -863,6 +896,7 @@ class HPexGUI(wx.Frame):
                 # I think these are the only two-word types. Do any
                 # new-to-the-HP49 objects have multiple words in their
                 # types, as told to Kermit?
+                print(out)
                 out = out.replace('Real Number', 'RealNumber')
                 out = out.replace('Global Name', 'GlobalName')
                 
@@ -1025,7 +1059,7 @@ class HPexGUI(wx.Frame):
     def close(self, event):
         if HPexSettingsTools.load_settings().disconnect_on_close and self.connected:
             # disconnect because we're now connected
-            self.connect_to_48(None)
+            self.connect_to_48(event=None)
             
         # If Kermit fails here, HPex will stop for a short moment
         # until Kermit gives up. I don't think this is an issue.

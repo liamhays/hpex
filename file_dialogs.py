@@ -267,7 +267,8 @@ class FileSendDialog(wx.Frame):
                 self.kermit_connector.cancel_kermit()
         else:
             self.xmodem_connector.cancel()
-
+        self.on_close(event=None)
+        
     def on_close(self, event):
         # unsubscribe to prevent accessing deleted objects
         # from https://stackoverflow.com/a/62105716

@@ -49,6 +49,7 @@ class KermitErrorDialog(wx.Frame):
     def __init__(self, parent, stdout, title='Kermit Error',
                  close_func=None):
         wx.Frame.__init__(self, parent, title=title)
+        self.parent = parent
         self.close_func = close_func
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(
@@ -85,6 +86,7 @@ class KermitErrorDialog(wx.Frame):
     def on_close(self, event):
         if self.close_func:
             self.close_func.__call__()
+
         self.Close()
 
 
@@ -117,7 +119,6 @@ class XModemErrorDialog(wx.Frame):
     def on_close(self, event):
         if self.close_func:
             self.close_func.__call__()
-
         self.Close()
 
         
