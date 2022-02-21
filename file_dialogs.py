@@ -10,13 +10,13 @@ from xmodem_pubsub import XModemConnector
 from dialogs import KermitErrorDialog, XModemErrorDialog
 from helpers import KermitProcessTools, XModemProcessTools
 from settings import HPexSettingsTools
-
+from kermit_variable import KermitVariable
 
 # Because the GUI is drag and drop-based, the transfer dialogs start a
 # transfer on initialization.
 class FileSendDialog(wx.Frame):
     def __init__(self, parent, file_message, port, filename,
-                 remote_files, use_xmodem=False,
+                 file_already_exists=False, use_xmodem=False,
                  success_callback=None):
         
         wx.Frame.__init__(self, parent, title='Send ' + filename.name)
@@ -37,7 +37,7 @@ class FileSendDialog(wx.Frame):
         # mode and if the user wants it.
 
         ask = HPexSettingsTools.load_settings().ask_for_overwrite
-        if self.basename in remote_files and not self.xmodem and ask:
+        if file_already_exists and not self.xmodem and ask:
             self.result = wx.MessageDialog(
                 self,
                 f"'{filename}' already exists on the calculator.\nDo you want to continue?\nIf overwriting is disabled on the calculator, files will become '{filename}.1', '{filename}.2', etc.",
@@ -295,15 +295,15 @@ class FileSendDialog(wx.Frame):
         self.Destroy()
         
 class FileGetDialog(wx.Frame):
-    def __init__(self, parent, title, message,
-                 file_message, port, filename,
-                 current_dir,
+    def __init__(self, parent, message,
+                 file_message, port, varname,
+                 current_dir, # this needs to be here because we 'cd' in Kermit
                  success_callback=None):
         
-        wx.Frame.__init__(self, parent, title=title)
+        wx.Frame.__init__(self, parent, title=f'Get {varname}')
         
         self.port = port
-        self.filename = filename
+        self.varname = varname
         self.parent = parent
         self.current_dir = current_dir
         self.success_callback = success_callback
@@ -315,14 +315,14 @@ class FileGetDialog(wx.Frame):
         # check for the file in the current local directory, if it
         # exists, ask about overwriting
         ask = HPexSettingsTools.load_settings().ask_for_overwrite
-        if self.filename in os.listdir(self.current_dir) and ask:
+        if varname in os.listdir(self.current_dir) and ask:
             # just let the user know, so that they know what will
             # happen
             self.result = wx.MessageDialog(
                 self,
-                f"'{filename}' already exists in " +
+                f"'{varname}' already exists in " +
                 str(self.current_dir) +
-                f".\nDo you want to overwrite the existing file?\nIf you don't choose to overwrite, files will become '{filename}.~1~', '{filename}.~2~', etc.",
+                f".\nDo you want to overwrite the existing file?\nIf you don't choose to overwrite, files will become '{varname}.~1~', '{varname}.~2~', etc.",
                 'File already exists',
                 wx.YES_NO | wx.ICON_QUESTION | wx.CANCEL | wx.NO_DEFAULT).ShowModal()
             if self.result == wx.ID_YES:
@@ -334,8 +334,11 @@ class FileGetDialog(wx.Frame):
             elif self.result == wx.ID_CANCEL:
                 self.Destroy()
 
-        pub.subscribe(
-            self.kermit_newdata, f'kermit.newdata.{self.topic}')
+        # Don't need to subscribe to kermit.newdata, because there's
+        # no data available when receiving
+        
+        #pub.subscribe(
+        #    self.kermit_newdata, f'kermit.newdata.{self.topic}')
         pub.subscribe(
             self.kermit_failed, f'kermit.failed.{self.topic}')
         pub.subscribe(
@@ -372,65 +375,38 @@ class FileGetDialog(wx.Frame):
 
         self.label_sizer.Add(self.file_contents_box)
 
-        self.progress_text = wx.StaticText(
-            self,
-            wx.ID_ANY,
-            'Progress:')
-        
-        self.label_sizer.Add(
-            self.progress_text,
-            1,
-            wx.EXPAND | wx.ALL)
-        
         
         self.cancel_button = wx.Button(
             self, wx.ID_CANCEL, 'Cancel')
 
         self.cancel_button.Disable()
-
-        self.copy_button = wx.Button(
-            self, wx.ID_ANY, 'Copy', name='copybutton')
-
-        self.button_sizer.Add(
-            self.copy_button, 1, wx.EXPAND | wx.ALL)
-
-        self.button_sizer.Add(
-            self.cancel_button, 1, wx.EXPAND | wx.ALL)
-
-        self.copy_button.Bind(wx.EVT_BUTTON, self.run_kermit)
         self.cancel_button.Bind(wx.EVT_BUTTON, self.cancel)
-        
+    
         self.transfer_sizer.Add(
             self.label_sizer, 0,
             wx.EXPAND | wx.ALL)
             
         self.transfer_sizer.Add(
-            self.button_sizer, 1,
+            self.cancel_button, 0,
             wx.EXPAND | wx.ALL)
 
-        self.Bind(wx.EVT_CLOSE, self.onClose)
+        self.Bind(wx.EVT_CLOSE, self.on_close)
         self.SetSizerAndFit(self.transfer_sizer)
 
         self.Show(True)
         self.Update()
 
-    def reset_progress(self, extra_text=''):
-        self.progress_text.SetLabelText('Progress:' + extra_text)
-        self.cancel_button.Disable()
-        self.copy_button.Enable()
+        self.run_kermit(event=None)
         
-    def kermit_newdata(self, data, cmd):
-        if not self.already_wrote_label:
-            self.already_wrote_label = True
-            self.progress_text.SetLabelText(
-                'Progress: not available when receiving')
+    def reset_progress(self):
+        self.cancel_button.Disable()
         
 
     def kermit_failed(self, cmd, out):
         print('kermit failed')
 
         self.parent.SetStatusText(
-            f'Kermit failed to transfer {self.filename} from {self.port}')
+            f'Kermit failed to transfer {self.varname} from {self.port}')
         self.cancel_button.Disable()
         out = KermitProcessTools.strip_blank_lines(out)
         q_lines = ''
@@ -447,18 +423,18 @@ class FileGetDialog(wx.Frame):
 
     def kermit_cancelled(self, cmd, out):
         self.parent.SetStatusText('Kermit file transfer cancelled')
-        self.reset_progress(
-            extra_text=' Kermit cancelled; you may have to press [ATTN] or [CANCEL].')
+        self.reset_progress()
 
         
     def kermit_done(self, cmd, out):
         self.parent.SetStatusText(
-            f'Successfully transferred {self.filename}.')
+            f'Successfully transferred {self.varname}.')
         print('kermit succeeded')
-        self.reset_progress(extra_text=' Done!')
+        self.reset_progress()
         if callable(self.success_callback):
             self.success_callback.__call__()
-            
+        self.on_close(event=None)
+        
     def run_kermit(self, event):
         # we're not going to worry about moving, because we can't
         # differentiate easily between directories and variables
@@ -469,7 +445,7 @@ class FileGetDialog(wx.Frame):
             command = ''
         # move to the right directory
         command += 'cd ' + str(self.current_dir) + ','
-        command += f'get {self.filename}'
+        command += f'get {self.varname}'
         print(command)
         # this code is basically the same as the connecting code
         self.kermit_connector = KermitConnector()
@@ -484,19 +460,17 @@ class FileGetDialog(wx.Frame):
         # lets us check if we've already written 'Progress: not
         # available when receiving' to self.progress_text
         self.already_wrote_label = False
-        self.copy_button.Disable()
         self.cancel_button.Enable()
         
     def cancel(self, event):
         if self.kermit_connector.isalive():
             self.kermit_connector.cancel_kermit()
-            self.copy_button.Enable()
-
+        self.on_close(event=None)
 
     
-    def onClose(self, event):
-        pub.unsubscribe(
-            self.kermit_newdata, f'kermit.newdata.{self.topic}')
+    def on_close(self, event):
+        #pub.unsubscribe(
+        #    self.kermit_newdata, f'kermit.newdata.{self.topic}')
         pub.unsubscribe(
             self.kermit_failed, f'kermit.failed.{self.topic}')
         pub.unsubscribe(

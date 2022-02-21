@@ -1,8 +1,8 @@
 import threading
 
-# global TODO: Kermit/XModem threads should extend Thread class
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
 from pathlib import Path
+import os
 
 import wx
 from pubsub import pub
@@ -13,7 +13,7 @@ from dialogs import KermitConnectingDialog, RemoteCommandDialog, KermitErrorDial
 from kermit_pubsub import KermitConnector
 from settings import HPexSettingsTools
 from settings_frame import SettingsFrame
-
+from kermit_variable import KermitVariable
 
 # These have to spawn a progress window and start the file transfer
 class HPTextDropTarget(wx.TextDropTarget):
@@ -26,10 +26,12 @@ class HPTextDropTarget(wx.TextDropTarget):
         print('data is', data)
         wx.CallAfter(
             pub.sendMessage,
-            f'ui.start_hp_transfer.{self.topic}',
+            f'ui.transfer_to_hp.{self.topic}',
             path=data)
         return True
 
+# here, we have to transfer a KermitVariable object, so we extend
+# wx.DropTarget
 class LocalTextDropTarget(wx.TextDropTarget):
     def __init__(self, window):
         wx.TextDropTarget.__init__(self)
@@ -38,9 +40,13 @@ class LocalTextDropTarget(wx.TextDropTarget):
         
     def OnDropText(self, x, y, data):
         print('data in local text is', data)
+        wx.CallAfter(
+            pub.sendMessage,
+            f'ui.transfer_to_local.{self.topic}',
+            sel_index=data)
         return True
 
-    
+
 class HPexGUI(wx.Frame):
     # The calculator has to be in translate mode 3, the most
     # translation, for this tool to work. Otherwise, Python (or is it
@@ -63,21 +69,14 @@ class HPexGUI(wx.Frame):
         pub.subscribe(self.kermit_done, f'kermit.done.{self.topic}')
 
         pub.subscribe(
-            self.start_hp_transfer, f'ui.start_hp_transfer.{self.topic}')
+            self.transfer_to_hp, f'ui.transfer_to_hp.{self.topic}')
+        pub.subscribe(
+            self.transfer_to_local, f'ui.transfer_to_local.{self.topic}')
         
         self.menubar = wx.MenuBar()
         self.file_menu = wx.Menu()
         self.local_menu = wx.Menu()
         self.hp_menu = wx.Menu()
-
-        # I don't know if the macro tools will get anywhere.
-        #self.macro_item = self.file_menu.Append(
-        #    wx.ID_ANY, 'Macro builder...',
-        #    'Open the macro builder to create a multi-file macro.')
-
-        #self.macro_run_item = self.file_menu.Append(
-        #    wx.ID_ANY, 'Macro runner...',
-        #    'Run a previously created macro.')
         
         self.settings_item = self.file_menu.Append(
             # pretty much self-explanatory
@@ -123,7 +122,7 @@ class HPexGUI(wx.Frame):
             self.toolbar_panel, wx.ID_ANY, 'XModem')
 
         # This lets me force the GUI into XModem mode on startup
-        # (probably should be a configurable option)
+        # TODO: make an option to always start in XModem mode
         
         #self.xmodem_radiobutton.SetValue(True)
         #self.kermit_radiobutton.SetValue(False)
@@ -172,7 +171,9 @@ class HPexGUI(wx.Frame):
         # self.current_local_path is maintained as a Path object. It
         # only becomes a string when it has to be used in something
         # that doesn't support Paths directly.
-        self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
+        # TODO: revert after testing
+        #self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
+        self.current_local_path = Path('/home/liam/tests/')
         #Path(
         #    HPexSettingsTools.load_settings().startup_dir)
         self.local_dir = wx.StaticText(
@@ -305,11 +306,10 @@ class HPexGUI(wx.Frame):
         
         self.SetSizerAndFit(self.main_sizer)
 
-        # the statusbar is the most important part of the application:
-        # it tells you what's going on.
+
         self.CreateStatusBar()
 
-        #### all the widgets have been drawn, initialize some
+        #### all the widgets have been drawn, so initialize some
         #### variables and get everything up to speed and the correct
         #### configuration.
 
@@ -430,9 +430,17 @@ class HPexGUI(wx.Frame):
     def hp_file_drag(self, event):
         self.hp_files.SetDropTarget(None)
         sel_index = self.hp_files.GetFirstSelected()
-        varname = self.hpvars[sel_index]
+        #varname = self.hpvars[sel_index].name
 
-        data = wx.TextDataObject(varname)
+        # I would like to make a DropTarget that uses some kind of
+        # subclass of wx.DataObject which holds a KermitVariable, but
+        # a) that's hard to implement, and b) I don't think we need to
+        # carry around all that information all the time.
+        ####
+        # A much easier method is to transfer the selected item index,
+        # since that isn't going to change. This also means that we
+        # don't have to search based on variable name later on.
+        data = wx.TextDataObject(str(sel_index))#varname)
         drop_source = wx.DropSource(self.hp_files)
         drop_source.SetData(data)
         drop_source.DoDragDrop(True)
@@ -607,7 +615,7 @@ class HPexGUI(wx.Frame):
             found_item_index = self.local_files.FindItem(
                 0, self.local_selection)
 
-            if found_item_index != -1: # item was found
+            if found_item_index != -1: # -1 is returned when the item is not found
                 #print(self.local_files.GetItem(found_item_index))
                 # find the item and make the listctrl select it.
                 self.local_files.Select(found_item_index)
@@ -639,9 +647,9 @@ class HPexGUI(wx.Frame):
         
     def hp_item_activated(self, event):
         sel_index = self.hp_files.GetFirstSelected()
-        varname = self.hpvars[sel_index]
+        varname = self.hpvars[sel_index].name
 
-        if self.hptypes[sel_index] == 'Directory':
+        if self.hpvars[sel_index].vtype == 'Directory':
             self.kermit_connector = KermitConnector()
             print('varname', varname)
             self.kermit = threading.Thread(
@@ -682,37 +690,14 @@ class HPexGUI(wx.Frame):
             self.kermit.start()
 
             
-    def double_click_on_hp_file(self, event):
-        # Double-clicking (or pressing Enter, or Space) selects the
-        # item, which brings up the FileGetDialog, allowing you to
-        # copy the file.
-        sel_index = self.hp_files.GetFirstSelected()
-        # can't use the selection directly, because it has the colon
-        # notation
-        filename = self.hpvars[sel_index]
-
-        checksum_hex = KermitProcessTools.checksum_to_hexstr(self.hpcrcs[sel_index])
-        
-        message = f"You have chosen to transfer '{filename}' from the HP48 at " + self.serial_port_box.GetValue() + '.'
-
-        filestats = f'Size: {self.hpsizes[sel_index]}\nType: {self.hptypes[sel_index]}\nChecksum: {checksum_hex}'
-        # we don't assign this to a variable, so that a new dialog
-        # gets created every time.
-        FileGetDialog(
-            self, f'Get {filename}', message, filestats,
-            self.serial_port_box.GetValue(), filename,
-            self.current_local_path, self.refresh_all_files)
-        
-
-    # TODO: this is a bad name, it implies a transfer from the calculator
-    def start_hp_transfer(self, path):
+    def transfer_to_hp(self, path):
         print('start_hp_transfer, path is', path)
         # path is the file to send
         
-        # see, normally we would have a statusbar update or a
-        # dialog to inform the user when they can't send a file,
-        # but as long as self.hp_files is disabled, we don't need
-        # that.
+        # see, normally we would have a statusbar update or a dialog
+        # to inform the user when they can't send a file, but as long
+        # as self.hp_files is disabled, we don't need that because the
+        # drag and drop interface provides that feedback.
 
         filename = Path(path)
         
@@ -726,20 +711,42 @@ class HPexGUI(wx.Frame):
             self.hpvars = []
 
         basename = Path(filename).name
-        message = FileTools.create_local_message(
+        msg = FileTools.create_local_message(
             filename.expanduser(), basename)
-        
+        exists = False
+        for var in self.hpvars:
+            if var.name == basename:
+                exists = True
+                
         FileSendDialog(
-            self,
-            message,
-            self.serial_port_box.GetValue(),
+            parent=self,
+            message=msg,
+            port=self.serial_port_box.GetValue(),
             # we have to give the dialog the full path so that
             # Kermit can get it
-            filename.expanduser(),
-            self.hpvars,
-            self.xmodem_mode,
-            self.refresh_all_files)
+            filename=filename.expanduser(),
+            file_already_exists=exists,
+            use_xmodem=self.xmodem_mode,
+            success_callback=self.refresh_all_files)
 
+    def transfer_to_local(self, sel_index):
+        index = int(sel_index)
+        print('start_local_transfer, index is', index)
+        var = self.hpvars[index]
+        
+        msg = f"You have chosen to transfer '{var.name}' from the HP48 at " + self.serial_port_box.GetValue() + '.'
+        filestats = f'Size: {var.size}\nType: {var.vtype}\nChecksum: {var.crc}'
+
+
+        FileGetDialog(
+            parent=self,
+            message=msg,
+            file_message=filestats,
+            port=self.serial_port_box.GetValue(),
+            varname=var.name,
+            current_dir=self.current_local_path, 
+            success_callback=self.refresh_all_files)
+        
     def start_remote_command_dialog(self, event=None):
         # the only way to be connected is to be in Kermit mode,
         # so we only need to check one variable
@@ -749,7 +756,8 @@ class HPexGUI(wx.Frame):
                 self.serial_port_box.GetValue()).go()
         else:
             self.SetStatusText('Not connected, so remote commands are unavailable')
-            
+
+    # TODO: use Kermit variable data class
     def update_internal_kermit_data(self, output):
         # This is one of the most important functions in this entire
         # program. It takes the output from Kermit, runs it through
@@ -757,48 +765,36 @@ class HPexGUI(wx.Frame):
         # row (removing the one with the path and memory free in Port
         # 0), and then splits each row by columns and returns it.
 
-        
+        self.hpvars = []
         kermit_vars = KermitProcessTools.process_kermit_vars(output)
-        # Column 1 is variable names.
-        self.hpvars = [col[0] for col in kermit_vars]
-        # Column 2 is variable sizes.
-        self.hpsizes = [col[1] for col in kermit_vars]
-        # Column 3 is variable types, but we populate this
-        # differently. This iterates over each item in column 2,
-        # replacing the contractions with the correct text (see below
-        # in kermit_done), and building the list.
-        self.hptypes = []
-        for item in [col[2] for col in kermit_vars]:
-            if item == 'RealNumber':
-                self.hptypes.append('Real Number')
-            elif item == 'GlobalName':
-                self.hptypes.append('Global Name')
-            else:
-                self.hptypes.append(item)
-        # Column 3 is variable checksums
-        self.hpcrcs = [col[3] for col in kermit_vars]
+        for i in kermit_vars:
+            # each element of each row is the name, size, type, and crc
+            print(i)
+
+            # undo the thing we did in kermit_done()
+            t = i[2]
+            if t == 'RealNumber':
+                t = 'Real Number'
+            elif t == 'GlobalName':
+                t = 'Global Name'
+            self.hpvars.append(KermitVariable(name=i[0], size=i[1], vtype=t,
+                                              crc=KermitProcessTools.checksum_to_hexstr(i[3])))
+
         
-        # clear the listctrl for good measure
+        # clear the listctrl to refresh
         self.hp_files.DeleteAllItems()
 
-        for f in self.hpvars:
+        
+        for index, var in enumerate(self.hpvars):
             # Insert the items into the listctrl (so maybe
             # 'update_internal_kermit_vars' isn't the best name?)
-            idx = self.hpvars.index(f)
-            t = self.hptypes[idx]
-            s = self.hpsizes[idx]
-            c = self.hpcrcs[idx]
             
-            item_index = self.hp_files.InsertItem(idx, f)
-            self.hp_files.SetItem(item_index, 1, s)
-            self.hp_files.SetItem(item_index, 2, t)
-            # convert the decimal checksums to hex strings (I suppose
-            # eventually we should have a user option for the base
-            # they want the checksum in).
-            self.hp_files.SetItem(
-                item_index, 3,
-                KermitProcessTools.checksum_to_hexstr(c))
+            item_index = self.hp_files.InsertItem(index, var.name)
+            self.hp_files.SetItem(item_index, 1, var.size)
+            self.hp_files.SetItem(item_index, 2, var.vtype)
+            self.hp_files.SetItem(item_index, 3, var.crc)
 
+        # auto resize the list in case lengths have changed
         self.hp_files.SetColumnWidth(0, wx.LIST_AUTOSIZE)
 
     def kermit_cancelled(self, cmd, out):
@@ -885,68 +881,64 @@ class HPexGUI(wx.Frame):
                                '.')
 
         
-        else:#if 'finish' not in cmd:
-            if cmd == 'remote directory': # we connected
+        elif cmd == 'remote directory': # we connected
                 
-                # Real Number is two words, which means it's hard for
-                # Python to process the same way as others. We will
-                # replace this back later, but for now, these are
-                # pushed together into one word.
+            # Real Number is two words, so it breaks a .split(' '). We
+            # replace here and fix again later.
+            
+            # I think these are the only two-word types. Do any
+            # new-to-the-HP49 objects have multiple words in their
+            # types, as told to Kermit?
+            print(out)
+            out = out.replace('Real Number', 'RealNumber')
+            out = out.replace('Global Name', 'GlobalName')
+            
 
-                # I think these are the only two-word types. Do any
-                # new-to-the-HP49 objects have multiple words in their
-                # types, as told to Kermit?
-                print(out)
-                out = out.replace('Real Number', 'RealNumber')
-                out = out.replace('Global Name', 'GlobalName')
-                
+            out = KermitProcessTools.remove_kermit_warnings(
+                out.splitlines())
+            
+            #print(out)
+            # read these again to be processed
+            self.hp_dir, self.memfree = KermitProcessTools.process_kermit_header(out)
+            # these happen regardless of whether we're connected
+            # or not.
+            self.update_internal_kermit_data(out)
+            self.hp_dir_label.SetLabelText(
+                f'{self.hp_dir}  {self.memfree} bytes free')
+            
+            # special things if we're already connected, that
+            # means the user did a refresh or changed remote
+            # directory
 
-                out = KermitProcessTools.remove_kermit_warnings(
-                    out.splitlines())
-                
-                #print(out)
-                # read these again to be processed
-                self.hp_dir, self.memfree = KermitProcessTools.process_kermit_header(out)
-                # these happen regardless of whether we're connected
-                # or not.
-                self.update_internal_kermit_data(out)
-                self.hp_dir_label.SetLabelText(
-                    f'{self.hp_dir}  {self.memfree} bytes free')
+            if self.connected:
 
-                # special things if we're already connected, that
-                # means the user did a refresh or changed remote
-                # directory
+                # we adjust and update this here so, because
+                # that's where the new data comes in. We also have
+                # to only update this when we are connected,
+                # otherwise it's basically irrelevant
+                if not self.updating_remote_path:
+                    loc = self.hp_top_index + self.hp_files.GetCountPerPage() - 1
+                    # prevent an assertionerror when there is less
+                    # than one pagefull of files on the remote side
+                    if loc >= self.hp_files.GetCountPerPage():
+                        self.hp_files.EnsureVisible(loc)
+                        
+                        # again, the same thing as before.
+                        if self.hp_selection:
+                            found_item_index = self.hp_files.FindItem(
+                                0, self.hp_selection)
 
-                if self.connected:
-
-                    # we adjust and update this here so, because
-                    # that's where the new data comes in. We also have
-                    # to only update this when we are connected,
-                    # otherwise it's basically irrelevant
-                    if not self.updating_remote_path:
-                        loc = self.hp_top_index + self.hp_files.GetCountPerPage() - 1
-                        # prevent an assertionerror when there is less
-                        # than one pagefull of files on the remote side
-                        if loc >= self.hp_files.GetCountPerPage():
-                            self.hp_files.EnsureVisible(loc)
-                            
-                            # again, the same thing as before.
-                            if self.hp_selection:
-                                found_item_index = self.hp_files.FindItem(
-                                    0, self.hp_selection)
-
-                            if found_item_index != -1:
-                                self.hp_files.Select(
-                                    # I think it's safer to search in
-                                    # the populated list, because it
-                                    # knows what it has, just in case
-                                    # something varies between
-                                    # self.hpvars and the list's
-                                    # entries.
-                                    self.hp_files.FindItem(
-                                        0, self.hp_selection))
-                    else:
-                        self.updating_remote_path = False
+                        if found_item_index != -1:
+                            self.hp_files.Select(
+                                # I think it's safer to search in the
+                                # populated list, because it knows
+                                # what it has, just in case something
+                                # varies between self.hpvars and the
+                                # list's entries.
+                                self.hp_files.FindItem(
+                                    0, self.hp_selection))
+                else:
+                    self.updating_remote_path = False
                     # /this/ is where we update the statusbar after a
                     # remote refresh
                     self.SetStatusText('Updated remote variables.')
@@ -954,43 +946,43 @@ class HPexGUI(wx.Frame):
                     # there's nothing left to do.
                     return
                 
-                self.connecting_dialog.Close()
-
-                self.connect_button.SetLabel('Disconnect')
-                self.connected = True
-                self.enable_on_connect()
-                # don't disable connect_button here!
-                self.SetStatusText(
-                    'Connected to ' +
-                    self.serial_port_box.GetValue() +
-                    ' successfully.')
-                # now, we can sort out Kermit's output and put it in
-                # the list
-                if self.firstpath:
-                    self.firstpath = self.hp_dir
-
-                
-            elif 'remote host' in cmd:
-                # We changed directories. However, in
-                # RemoteCommandDialog, we ran the arbitrary command
-                # issued by the user. Since we changed directories, we
-                # need to update the remote variables now, and the
-                # statusbar indicates this as such.
-                
-
-                self.SetStatusText('Updating remote variables...')
-                # refresh the path by calling remote directory
-                self.kermit_connector = KermitConnector()
+            self.connecting_dialog.Close()
             
-                self.kermit = threading.Thread(
-                    target=self.kermit_connector.run,
-                    args=(self.serial_port_box.GetValue(),
-                          self,
-                          'remote directory',
-                          self.topic,
-                          False))
+            self.connect_button.SetLabel('Disconnect')
+            self.connected = True
+            self.enable_on_connect()
+            # don't disable connect_button here!
+            self.SetStatusText(
+                'Connected to ' +
+                self.serial_port_box.GetValue() +
+                ' successfully.')
+            # now, we can sort out Kermit's output and put it in
+            # the list
+            if self.firstpath:
+                self.firstpath = self.hp_dir
+
                 
-                self.kermit.start()
+        elif 'remote host' in cmd:
+            # We changed directories. However, in
+            # RemoteCommandDialog, we ran the arbitrary command
+            # issued by the user. Since we changed directories, we
+            # need to update the remote variables now, and the
+            # statusbar indicates this as such.
+            
+            
+            self.SetStatusText('Updating remote variables...')
+            # refresh the path by calling remote directory
+            self.kermit_connector = KermitConnector()
+            
+            self.kermit = threading.Thread(
+                target=self.kermit_connector.run,
+                args=(self.serial_port_box.GetValue(),
+                      self,
+                      'remote directory',
+                      self.topic,
+                      False))
+            
+            self.kermit.start()
                 
         
         

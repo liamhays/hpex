@@ -74,12 +74,8 @@ class KermitProcessTools:
 
         lines = remote_dir_output.split('\n')
         
-        #KermitProcessTools.remove_kermit_warnings(lines)
-        
-        # apparently, we have to have two seperate loops
-        
-        # on the bright side, names can't have braces in them, so this
-        # is a valid way of removing the line containing the path
+        # names can't have braces in them, so this is a valid way of
+        # removing the line containing the path
         for line in lines:
             if '{' in line:
                 lines.remove(lines[lines.index(line)])
