@@ -144,7 +144,7 @@ class HPexGUI(wx.Frame):
         # box to connect, which is surprisingly useful
         self.serial_port_box = wx.TextCtrl(
             self.toolbar_panel, style=wx.TE_PROCESS_ENTER)
-        self.serial_port_box.Bind(wx.EVT_TEXT_ENTER, self.connect_to_48)
+        self.serial_port_box.Bind(wx.EVT_TEXT_ENTER, self.connect_to_hp)
         
         self.refresh_button = wx.Button(
             self.toolbar_panel, wx.ID_REFRESH, 'Refresh All')
@@ -155,7 +155,7 @@ class HPexGUI(wx.Frame):
         self.connect_button = wx.Button(
             self.toolbar_panel, wx.ID_ANY, 'Connect')
         
-        self.connect_button.Bind(wx.EVT_BUTTON, self.connect_to_48)
+        self.connect_button.Bind(wx.EVT_BUTTON, self.connect_to_hp)
 
         self.toolbar_sizer.Add(self.serial_port_box, 1, wx.EXPAND)
         self.toolbar_sizer.Add(self.refresh_button, 1, wx.EXPAND)
@@ -226,7 +226,6 @@ class HPexGUI(wx.Frame):
             self.local_image_list, wx.IMAGE_LIST_SMALL)
 
         self.local_files.Bind(
-            # TODO: Maybe use EVT_LIST_ITEM_SELECTED instead?
             wx.EVT_LIST_ITEM_ACTIVATED, self.local_item_activated)
         
         self.local_sizer.Add(
@@ -336,12 +335,21 @@ class HPexGUI(wx.Frame):
 
         self.updating_remote_path = False
 
-        # like I said, this should be configurable---either XModem or
-        # Kermit on startup
-        self.set_kermit_ui_layout(event=None)
-        self.hp_home_button.Disable()
-        self.hp_updir_button.Disable()
-        self.hp_files.Enable()
+        self.disable_on_disconnect()
+
+        xmodem = HPexSettingsTools.load_settings().start_in_xmodem
+        if xmodem:
+            self.set_xmodem_ui_layout(event=None)
+            # select the XModem radiobutton
+            self.xmodem_radiobutton.SetValue(True)
+            
+        else:
+            self.set_kermit_ui_layout(event=None)
+
+
+        #self.hp_home_button.Disable()
+        #self.hp_updir_button.Disable()
+        #self.hp_files.Enable()
 
         self.Bind(wx.EVT_CLOSE, self.close)
         self.Show(True)
@@ -464,7 +472,8 @@ class HPexGUI(wx.Frame):
         self.xmodem_radiobutton.Enable()
         self.connect_button.Enable()
         self.serial_port_box.Enable()
-
+        self.run_hp_command_item.Enable(False)
+        
     def enable_on_connect(self):
         self.kermit_radiobutton.Disable()
         self.xmodem_radiobutton.Disable()
@@ -473,6 +482,7 @@ class HPexGUI(wx.Frame):
         self.hp_updir_button.Enable()
         self.hp_dir_label.Enable()
         self.hp_files.Enable()
+        self.run_hp_command_item.Enable(True)
         
     def set_xmodem_ui_layout(self, event):
         # A connection check isn't really necessary, but it's a good
@@ -487,7 +497,7 @@ class HPexGUI(wx.Frame):
             # disable the connect button, too, so that the image put
             # forward matches the text in hp_dir_label
             self.connect_button.Disable()
-
+            self.run_hp_command_item.Enable(False)
     def set_kermit_ui_layout(self, event):
         self.xmodem_mode = False
         self.hp_dir_label.SetLabelText('')
@@ -757,7 +767,6 @@ class HPexGUI(wx.Frame):
         else:
             self.SetStatusText('Not connected, so remote commands are unavailable')
 
-    # TODO: use Kermit variable data class
     def update_internal_kermit_data(self, output):
         # This is one of the most important functions in this entire
         # program. It takes the output from Kermit, runs it through
@@ -986,16 +995,22 @@ class HPexGUI(wx.Frame):
                 
         
         
-    def connect_to_48(self, event):
+    def connect_to_hp(self, event):
         # This function is responsible for both connecting and
         # disconnecting. If we're connected, we disconnect, and if
         # we're disconnected, we connect.
+
+        # do nothing if in XModem mode
+        if self.xmodem_mode:
+            return
+        
         if self.serial_port_box.GetValue() == '':
             print('empty serial port box')
-            wx.MessageDialog(self, 'Serial port box is empty! Cannot reach calculator.',
+            wx.MessageDialog(self, 'Serial port box is empty!',
                              caption='Serial error',
                              style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
             return
+        
         self.kermit_connector = KermitConnector()
         
         if not self.connected:
@@ -1051,7 +1066,7 @@ class HPexGUI(wx.Frame):
     def close(self, event):
         if HPexSettingsTools.load_settings().disconnect_on_close and self.connected:
             # disconnect because we're now connected
-            self.connect_to_48(event=None)
+            self.connect_to_hp(event=None)
             
         # If Kermit fails here, HPex will stop for a short moment
         # until Kermit gives up. I don't think this is an issue.

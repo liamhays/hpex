@@ -107,7 +107,11 @@ class SettingsFrame(wx.Frame):
 
         self.ask_for_overwrite_check.SetValue(
             self.current_settings.ask_for_overwrite)
-        
+
+        self.start_in_xmodem_check = wx.CheckBox(
+            self, wx.ID_ANY,
+            'Start HPex in XModem mode')
+
         self.ok_button = wx.Button(self, wx.ID_OK, 'OK')
         self.ok_button.Bind(wx.EVT_BUTTON, self.ok)
         self.cancel_button = wx.Button(self, wx.ID_CANCEL, 'Cancel')
@@ -154,12 +158,16 @@ class SettingsFrame(wx.Frame):
 
         self.main_sizer.Add(
             self.ask_for_overwrite_check, pos=(9, 0), span=(1, 2))
+
+        self.main_sizer.Add(
+            self.start_in_xmodem_check, pos=(10, 0), span=(1, 2))
+        
         self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.button_sizer.Add(self.ok_button, 1, flag=wx.EXPAND)
         self.button_sizer.Add(self.cancel_button, 1, flag=wx.EXPAND)
 
         self.main_sizer.Add(
-            self.button_sizer, pos=(10, 0), span=(1, 2), flag=wx.EXPAND)
+            self.button_sizer, pos=(11, 0), span=(1, 2), flag=wx.EXPAND)
         self.SetSizerAndFit(self.main_sizer)
         self.Show(True)
 
@@ -176,6 +184,7 @@ class SettingsFrame(wx.Frame):
         self.current_settings.disconnect_on_close = self.disconnect_on_close_check.GetValue()
         self.current_settings.reset_directory_on_disconnect = self.reset_on_disconnect_check.GetValue()
         self.current_settings.ask_for_overwrite = self.ask_for_overwrite_check.GetValue()
+        self.current_settings.start_in_xmodem = self.start_in_xmodem_check.GetValue()
         print(self.current_settings)
         # I could just use the builtin open() here, but I want to keep
         # my file access consistent across the settings frame. Because

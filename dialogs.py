@@ -26,7 +26,7 @@ class KermitConnectingDialog(wx.Frame):
         
         self.connecting_cancel_button = wx.Button(
             self,
-            wx.ID_ANY,
+            wx.ID_CANCEL,
             'Cancel')
         
         self.connecting_cancel_button.Bind(

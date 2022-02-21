@@ -35,7 +35,8 @@ class HPexSettings:
                  disable_pty_search=False,
                  disconnect_on_close=False,
                  reset_directory_on_disconnect=True,
-                 ask_for_overwrite=True):
+                 ask_for_overwrite=True,
+                 start_in_xmodem=False):
         
         self.startup_dir = startup_dir
         self.kermit_executable = kermit_executable
@@ -47,6 +48,7 @@ class HPexSettings:
         self.disconnect_on_close = disconnect_on_close
         self.reset_directory_on_disconnect = reset_directory_on_disconnect
         self.ask_for_overwrite = ask_for_overwrite
+        self.start_in_xmodem = start_in_xmodem
     def __str__(self):
         return (
             'startup_dir: ' + str(self.startup_dir) +
@@ -58,4 +60,5 @@ class HPexSettings:
             '  disable_pty_search: ' + str(self.disable_pty_search) +
             '  disconnect_on_close: ' + str(self.disconnect_on_close) +
             '  reset_directory_on_disconnect: ' + str(self.reset_directory_on_disconnect) +
-            '  ask_for_overwrite' + str(self.ask_for_overwrite))
+            '  ask_for_overwrite: ' + str(self.ask_for_overwrite) +
+            '  start_in_xmodem: ' + str(self.start_in_xmodem))
