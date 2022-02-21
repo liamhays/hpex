@@ -112,6 +112,9 @@ class SettingsFrame(wx.Frame):
             self, wx.ID_ANY,
             'Start HPex in XModem mode')
 
+        self.start_in_xmodem_check.SetValue(
+            self.current_settings.start_in_xmodem)
+        
         self.ok_button = wx.Button(self, wx.ID_OK, 'OK')
         self.ok_button.Bind(wx.EVT_BUTTON, self.ok)
         self.cancel_button = wx.Button(self, wx.ID_CANCEL, 'Cancel')

@@ -1,6 +1,5 @@
 import signal
 
-
 from pubsub import pub
 import ptyprocess
 
