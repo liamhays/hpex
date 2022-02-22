@@ -82,22 +82,34 @@ class HPexGUI(wx.Frame):
         
         self.settings_item = self.file_menu.Append(
             # pretty much self-explanatory
-            wx.ID_PREFERENCES, 'Settings...', '')
+            wx.ID_PREFERENCES, 'Settings...\tCtrl+,', '')
         
         self.Bind(
-            wx.EVT_MENU, lambda e: SettingsFrame(self).go())
+            wx.EVT_MENU, lambda e: SettingsFrame(self).go(), self.settings_item)
+
+        self.send_menuitem = self.file_menu.Append(
+            wx.ID_ANY, '&Send selected local file\tCtrl+S', '')
+
+        self.Bind(
+            wx.EVT_MENU, self.send_menu_callback, self.send_menuitem)
         
+        self.get_menuitem = self.file_menu.Append(
+            wx.ID_ANY, '&Get selected remote file\tCtrl+G', '')
+
+#        self.Bind(
+#            wx.EVT_MENU, s, self.get_menuitem)
         self.run_ckfinder_item = self.local_menu.Append(
-            wx.ID_ANY, 'Calculate checksum of object...',
+            wx.ID_ANY, 'Calculate checksum of &object...\tCtrl+O',
             'Calculate the checksum and filesize, and find the ROM revision.')
+        
         self.Bind(
             # lambda forces the creation of a new object
             wx.EVT_MENU, lambda e: ObjectInfoDialog(self).go(),
             self.run_ckfinder_item)
         
         self.run_hp_command_item = self.hp_menu.Append(
-            wx.ID_ANY, 'Run remote command...',
-            'Run command on the calculator')
+            wx.ID_ANY, '&Run remote command...\tCtrl+R',
+            'Run command on the calculator over Kermit')
 
         self.Bind(
             wx.EVT_MENU,
@@ -122,13 +134,6 @@ class HPexGUI(wx.Frame):
         
         self.xmodem_radiobutton = wx.RadioButton(
             self.toolbar_panel, wx.ID_ANY, 'XModem')
-
-        # This lets me force the GUI into XModem mode on startup
-        # TODO: make an option to always start in XModem mode
-        
-        #self.xmodem_radiobutton.SetValue(True)
-        #self.kermit_radiobutton.SetValue(False)
-        #self.xmodem_mode = True
 
         self.toolbar_sizer.Add(
             self.kermit_radiobutton, 1, wx.EXPAND | wx.ALL)
@@ -708,8 +713,6 @@ class HPexGUI(wx.Frame):
             # magic which we don't want to use here
             self.populate_local_files()
 
-        # TODO: need statusbar update here
-        
     def hp_item_activated(self, event):
         sel_index = self.hp_files.GetFirstSelected()
         varname = self.hpvars[sel_index].name
@@ -719,7 +722,8 @@ class HPexGUI(wx.Frame):
             self.new_remote_path = True
             print('varname', varname)
             
-            self.SetStatusText(f'Changing calculator directory to {self.hp_selection}...')
+            self.SetStatusText(
+                f'Changing calculator directory to {self.hp_selection}...')
 
             self.kermit_connector = KermitConnector()
             self.kermit = threading.Thread(
@@ -731,7 +735,24 @@ class HPexGUI(wx.Frame):
                       False))
             self.kermit.start()
 
-            
+    def send_menu_callback(self, event):
+        index = self.local_files.GetFirstSelected()
+        if index == -1:
+            # nothing selected
+            return
+        
+        file_path = Path(
+            self.current_local_path,
+            self.local_files.GetItemText(index))
+        self.transfer_to_hp(file_path)
+
+    def get_menu_callback(self, event):
+        sel_index = self.hp_files.GetFirstSelected()
+        if sel_index == -1:
+            # nothing selected
+            return
+        transfer_to_local(sel_index)
+                            
     def transfer_to_hp(self, path):
         print('start_hp_transfer, path is', path)
         # path is the file to send
@@ -827,8 +848,9 @@ class HPexGUI(wx.Frame):
             elif t == 'GlobalName':
                 t = 'Global Name'
                 
-            self.hpvars.append(KermitVariable(name=i[0], size=i[1], vtype=t,
-                                              crc=KermitProcessTools.checksum_to_hexstr(i[3])))
+            self.hpvars.append(
+                KermitVariable(name=i[0], size=i[1], vtype=t,
+                               crc=KermitProcessTools.checksum_to_hexstr(i[3])))
 
         
         # clear the listctrl to refresh

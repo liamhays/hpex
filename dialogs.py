@@ -128,8 +128,11 @@ class ObjectInfoDialog(wx.Frame):
         #self.parent = parent
         
     def go(self, event=None):
+        self.sizer = wx.BoxSizer(wx.VERTICAL) # needed to hold the panel
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-        
+        # for whatever reason, a Panel will process keyboard events
+        # but the Frame will not.
+        self.main_panel = wx.Panel(self)
         self.file_picker = wx.FilePickerCtrl(
             self, wx.ID_ANY, '',
             style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST)
@@ -152,12 +155,24 @@ class ObjectInfoDialog(wx.Frame):
 
         self.main_sizer.Add(self.file_picker, 0, wx.EXPAND | wx.ALL)
         self.main_sizer.Add(self.file_info_box, 1, wx.EXPAND | wx.ALL)
-
-        self.SetSizerAndFit(self.main_sizer)
+        self.main_panel.SetSizer(self.main_sizer)
         
+        self.sizer.Add(self.main_panel)
+        self.SetSizerAndFit(self.sizer)
+
+        self.main_panel.SetFocus()
+
+        # this is so that we can use Esc to close
+        # (I found myself trying to use Esc to close this dialog and
+        # realized it should be a feature)
+        self.main_panel.Bind(wx.EVT_KEY_DOWN, self.keydown)
         self.Show(True)
         
 
+    def keydown(self, event):
+        if event.GetKeyCode() == wx.WXK_ESCAPE:
+            self.Close()
+            
     def update_file_info_box(self, event):
         #print(self.file_picker.GetPath())
         self.file_info.SetLabelText(

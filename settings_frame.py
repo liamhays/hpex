@@ -15,9 +15,10 @@ class SettingsFrame(wx.Frame):
         
         self.main_sizer = wx.GridBagSizer()
 
+        # If we put a space at the start, it's kind of like a border.
         self.main_sizer.Add(
             wx.StaticText(
-                self, wx.ID_ANY, 'Startup directory:'),
+                self, wx.ID_ANY, ' Startup directory:'),
             pos=(0, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
 
         self.startup_dir_chooser = wx.DirPickerCtrl(
@@ -28,10 +29,10 @@ class SettingsFrame(wx.Frame):
         
         self.main_sizer.Add(
             self.startup_dir_chooser, pos=(0, 1))
-
+        
         self.main_sizer.Add(
             wx.StaticText(
-                self, wx.ID_ANY, 'Kermit name:'),
+                self, wx.ID_ANY, ' Kermit executable:'),
             pos=(1, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
 
         self.kermit_executable_box = wx.TextCtrl(self)
@@ -122,21 +123,21 @@ class SettingsFrame(wx.Frame):
         
         self.main_sizer.Add(
             wx.StaticText(
-                self, wx.ID_ANY, 'Baud rate:'),
+                self, wx.ID_ANY, ' Baud rate:'),
             pos=(2, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
         
         self.main_sizer.Add(self.baud_rate_choice, pos=(2, 1))
 
         self.main_sizer.Add(
             wx.StaticText(
-                self, wx.ID_ANY, 'Parity:'),
+                self, wx.ID_ANY, ' Parity:'),
             pos=(3, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
         
         self.main_sizer.Add(self.parity_choice, pos=(3, 1))
         
         self.main_sizer.Add(
             wx.StaticText(
-                self, wx.ID_ANY, 'Kermit file mode:'),
+                self, wx.ID_ANY, ' Kermit file mode:'),
             pos=(4, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
         
         self.main_sizer.Add(self.file_mode_choice, pos=(4, 1))
@@ -144,7 +145,7 @@ class SettingsFrame(wx.Frame):
         
         self.main_sizer.Add(
             wx.StaticText(
-                self, wx.ID_ANY, 'Kermit checksum mode:'),
+                self, wx.ID_ANY, ' Kermit checksum mode:'),
             pos=(5, 0), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL)
 
         self.main_sizer.Add(self.kermit_cksum_choice, pos=(5, 1))
