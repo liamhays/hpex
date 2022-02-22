@@ -96,8 +96,8 @@ class HPexGUI(wx.Frame):
         self.get_menuitem = self.file_menu.Append(
             wx.ID_ANY, '&Get selected remote file\tCtrl+G', '')
 
-#        self.Bind(
-#            wx.EVT_MENU, s, self.get_menuitem)
+        self.Bind(
+            wx.EVT_MENU, self.get_menu_callback, self.get_menuitem)
         self.run_ckfinder_item = self.local_menu.Append(
             wx.ID_ANY, 'Calculate checksum of &object...\tCtrl+O',
             'Calculate the checksum and filesize, and find the ROM revision.')
@@ -421,8 +421,6 @@ class HPexGUI(wx.Frame):
         self.hp_files.SetDropTarget(hp_drop_target)
         
     # TODO: implement Kermit send without server connection
-    # TODO: while the "drag to only one box" solution works,
-    #       it has state issues with a failure
     def local_file_drag(self, event):
         # If we remove the drop target, you can't drop here, so the
         # interface seems more normal: you can only drop on the other
@@ -751,7 +749,7 @@ class HPexGUI(wx.Frame):
         if sel_index == -1:
             # nothing selected
             return
-        transfer_to_local(sel_index)
+        self.transfer_to_local(sel_index)
                             
     def transfer_to_hp(self, path):
         print('start_hp_transfer, path is', path)
@@ -783,7 +781,7 @@ class HPexGUI(wx.Frame):
                 
         FileSendDialog(
             parent=self,
-            message=msg,
+            file_message=msg,
             port=self.serial_port_box.GetValue(),
             # we have to give the dialog the full path so that
             # Kermit can get it

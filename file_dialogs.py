@@ -12,6 +12,9 @@ from helpers import KermitProcessTools, XModemProcessTools
 from settings import HPexSettingsTools
 from kermit_variable import KermitVariable
 
+# TODO: FileGetDialog should say something about progress being unavailable.
+# TODO: When the user presses Close on an error dialog, it should close the parent file send/get dialog too.
+
 # Because the GUI is drag and drop-based, the transfer dialogs start a
 # transfer on initialization.
 class FileSendDialog(wx.Frame):
@@ -208,8 +211,9 @@ class FileSendDialog(wx.Frame):
                 q_lines += line + '\n'
                 
         KermitErrorDialog(
-            self, q_lines,
-            close_func=self.reset_progress).Show(True)
+            parent=self,
+            stdout=q_lines,
+            close_func=self.on_close).Show(True)
         
         # don't close, so that the user can close themselves or
         # try again without having to restart the dialog. I could
@@ -269,7 +273,7 @@ class FileSendDialog(wx.Frame):
             self.xmodem_connector.cancel()
         self.on_close(event=None)
         
-    def on_close(self, event):
+    def on_close(self, event=None):
         # unsubscribe to prevent accessing deleted objects
         # from https://stackoverflow.com/a/62105716
         pub.unsubscribe(
@@ -415,8 +419,9 @@ class FileGetDialog(wx.Frame):
                 q_lines += line + '\n'
                 
         KermitErrorDialog(
-            self, q_lines,
-            close_func=self.reset_progress).Show(True)
+            parent=self,
+            stdout=q_lines,
+            close_func=self.on_close).Show(True)
         # don't close, so that the user can close themselves or
         # try again without having to restart the dialog. I could
         # see that getting very annoying.
@@ -468,7 +473,7 @@ class FileGetDialog(wx.Frame):
         self.on_close(event=None)
 
     
-    def on_close(self, event):
+    def on_close(self, event=None):
         #pub.unsubscribe(
         #    self.kermit_newdata, f'kermit.newdata.{self.topic}')
         pub.unsubscribe(

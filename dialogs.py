@@ -51,6 +51,7 @@ class KermitErrorDialog(wx.Frame):
         wx.Frame.__init__(self, parent, title=title)
         self.parent = parent
         self.close_func = close_func
+
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(
             wx.StaticText(
@@ -84,7 +85,8 @@ class KermitErrorDialog(wx.Frame):
         self.SetSizerAndFit(self.sizer)
 
     def on_close(self, event):
-        if self.close_func:
+
+        if callable(self.close_func):
             self.close_func.__call__()
 
         self.Close()
