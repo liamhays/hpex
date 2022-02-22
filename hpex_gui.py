@@ -1,6 +1,8 @@
 import threading
 
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
+# TODO: automatically remove whitespace or prevent typing tab or space in serial port box
+# TODO: keyboard shortcuts to copy
 from pathlib import Path
 import os
 
@@ -337,9 +339,7 @@ class HPexGUI(wx.Frame):
         # been issued but the actual remote path has not changed. This
         # occurs when the Refresh button is pressed.
         self.new_remote_path = False
-        # this is set to true the first time we connect, so that
-        # kermit_done() can close the dialog.
-        self.first_connect = False
+
         self.disable_on_disconnect()
 
         xmodem = HPexSettingsTools.load_settings().start_in_xmodem
@@ -444,7 +444,6 @@ class HPexGUI(wx.Frame):
     def hp_file_drag(self, event):
         self.hp_files.SetDropTarget(None)
         sel_index = self.hp_files.GetFirstSelected()
-        #varname = self.hpvars[sel_index].name
 
         # I would like to make a DropTarget that uses some kind of
         # subclass of wx.DataObject which holds a KermitVariable, but
@@ -528,8 +527,8 @@ class HPexGUI(wx.Frame):
         
     def refresh_all_files(self, event=None):
         self.refresh_local_files()
-        self.call_remote_directory()
-        #self.refresh_hp_files()
+        if self.connected:
+            self.call_remote_directory()
 
     def refresh_port(self, event=None):
         self.serial_port_box.SetValue(FileTools.get_serial_ports(self))
@@ -677,7 +676,7 @@ class HPexGUI(wx.Frame):
         self.kermit.start()
     # This is very similar to refresh_local_files(). It saves the
     # selection, repopulates, and reselects.
-    def refresh_hp_vars(self):
+    def reselect_hp_var(self):
         print('self.hp_selection in refresh', self.hp_selection)
         loc = self.hp_top_index + self.hp_files.GetCountPerPage() - 1
         # prevent an assertionerror when there is less
@@ -800,23 +799,34 @@ class HPexGUI(wx.Frame):
         else:
             self.SetStatusText('Not connected, so remote commands are unavailable')
 
-    def update_internal_kermit_data(self, output):
-        # This is one of the most important functions in this entire
-        # program. It takes the output from Kermit, runs it through
-        # process_kermit_vars, which splits by lines and returns each
-        # row (removing the one with the path and memory free in Port
-        # 0), and then splits each row by columns and returns it.
+    def process_kermit_data(self, output):
+        # This function takes the output from Kermit, splits by lines
+        # and finds each row (removing the one with the path and
+        # memory free in Port 0), and then splits each row by columns
+        # and returns it.
 
         self.hpvars = []
-        kermit_vars = KermitProcessTools.process_kermit_vars(output)
+        lines = output.split('\n')
+        
+        # names can't have braces in them, so this is a valid way of
+        # removing the line containing the path
+        for line in lines:
+            if '{' in line:
+                lines.remove(lines[lines.index(line)])
+
+        kermit_vars = [row.split() for row in lines]
+        
         for i in kermit_vars:
-            # each element of each row is the name, size, type, and crc
+            # each element of each row is the name, size, type, and
+            # crc in that order
+            
             # undo the thing we did in kermit_done()
             t = i[2]
             if t == 'RealNumber':
                 t = 'Real Number'
             elif t == 'GlobalName':
                 t = 'Global Name'
+                
             self.hpvars.append(KermitVariable(name=i[0], size=i[1], vtype=t,
                                               crc=KermitProcessTools.checksum_to_hexstr(i[3])))
 
@@ -826,9 +836,6 @@ class HPexGUI(wx.Frame):
 
         
         for index, var in enumerate(self.hpvars):
-            # Insert the items into the listctrl (so maybe
-            # 'update_internal_kermit_vars' isn't the best name?)
-            
             item_index = self.hp_files.InsertItem(index, var.name)
             self.hp_files.SetItem(item_index, 1, var.size)
             self.hp_files.SetItem(item_index, 2, var.vtype)
@@ -866,9 +873,7 @@ class HPexGUI(wx.Frame):
             KermitErrorDialog(self, out).Show(True)
             return
 
-        # sometimes Kermit fails even when everything seems to
-        # succeed. I don't know why.
-        if self.first_connect:
+        if not self.connected:
             self.kermit_dialog.Close()
 
 
@@ -920,11 +925,12 @@ class HPexGUI(wx.Frame):
 
         
         elif cmd == 'remote directory':
-            if self.first_connect:
+            if not self.connected:
+                self.connected = True
                 print('first connect')
                 self.kermit_dialog.Close()
-                self.first_connect = False
                 
+
             # Real Number is two words, so it breaks a .split(' '). We
             # replace here and fix again later.
             
@@ -938,7 +944,7 @@ class HPexGUI(wx.Frame):
             out = KermitProcessTools.remove_kermit_warnings(
                 out.splitlines())
 
-
+            # save the current selected item
             if self.connected:
                 self.hp_top_index = self.hp_files.GetTopItem()
                 hp_sel_index = self.hp_files.GetFirstSelected()
@@ -952,42 +958,31 @@ class HPexGUI(wx.Frame):
             # read these again to be processed
             self.hp_dir, self.memfree = KermitProcessTools.process_kermit_header(out)
             # update self.hpvars and the header above self.hp_files
-            self.update_internal_kermit_data(out)
+            self.process_kermit_data(out)
             self.hp_dir_label.SetLabelText(
                 f'{self.hp_dir}  {self.memfree} bytes free')
             
             # special things if we're already connected, that
             # means the user did a refresh or changed remote
             # directory
-
             if self.connected:
                 # we adjust and update this here so, because
                 # that's where the new data comes in. We also have
                 # to only update this when we are connected.
-                print(self.new_remote_path)
-                if not self.new_remote_path:
-                    self.refresh_hp_vars()
-                else:
+                if self.new_remote_path:
                     self.new_remote_path = False
-                    # /this/ is where we update the statusbar after a
-                    # remote refresh
-                    self.SetStatusText('Updated remote variables.')
-                    # return, because we're already connected and
-                    # there's nothing left to do.
                     return
-                
+                else:
+                    self.reselect_hp_var()
+                    
+                self.SetStatusText('Updated remote variables.')
+            else:
+                self.SetStatusText('Connected to calculator on ' + self.serial_port_box.GetValue() + '.')
 
-            
+                
             self.connect_button.SetLabel('Disconnect')
-            self.connected = True
             self.enable_on_connect()
             # don't disable connect_button here!
-
-            if self.first_connect:
-                self.SetStatusText(
-                    'Connected to ' +
-                    self.serial_port_box.GetValue() +
-                    ' successfully.')
             # now, we can sort out Kermit's output and put it in
             # the list
             if self.firstpath:
@@ -1018,8 +1013,8 @@ class HPexGUI(wx.Frame):
         self.kermit_connector = KermitConnector()
         
         if not self.connected:
-            self.SetStatusText('Connecting to HP48...')
-            self.first_connect = True
+            self.SetStatusText('Connecting to calculator...')
+
             # this will show automatically
             self.kermit_dialog = KermitConnectingDialog(
                 self, self.kill_kermit_external,

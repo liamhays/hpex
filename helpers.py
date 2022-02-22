@@ -63,24 +63,6 @@ class KermitProcessTools:
 
         return (header, memfree)
 
-    @staticmethod
-    def process_kermit_vars(remote_dir_output):
-        """
-        This function uses the output of `remote directory`, just like
-        process_kermit_header, and returns a list of lists, each
-        internal list representing the variables spit out by Kermit.
-
-        """
-
-        lines = remote_dir_output.split('\n')
-        
-        # names can't have braces in them, so this is a valid way of
-        # removing the line containing the path
-        for line in lines:
-            if '{' in line:
-                lines.remove(lines[lines.index(line)])
-
-        return [row.split() for row in lines]
 
     @staticmethod
     def strip_blank_lines(dat):
