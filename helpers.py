@@ -183,6 +183,7 @@ class FileTools:
             
 
         crc_results = []
+        print('f is', f)
         try:
             crc_results = HPCRCCalculator(f).calc()
             crc_results[1] = KermitProcessTools.checksum_to_hexstr(crc_results[1])
@@ -208,13 +209,13 @@ class FileTools:
         ascii_header = FileTools.read_hp_ascii(filename)
         message = ''
         if bin_file_stats:
-            message = f"'{basename}' is an HP48 binary object.\nROM Revision: {bin_file_stats[0]} \nChecksum: {bin_file_stats[1]}\nObject size: {bin_file_stats[2]}"
+            message = f"'{basename}' is an HP binary object.\nROM Revision: {bin_file_stats[0]} \nChecksum: {bin_file_stats[1]}\nObject size: {bin_file_stats[2]}"
             
         elif ascii_header:
-            message = f"'{basename}' is an HP48 ASCII object.\nTranslate mode: {ascii_header[0]}\nAngle mode: {ascii_header[1]}\nFraction mark: {ascii_header[2]}"
+            message = f"'{basename}' is an HP ASCII object.\nTranslate mode: {ascii_header[0]}\nAngle mode: {ascii_header[1]}\nFraction mark: {ascii_header[2]}"
             
         else:
-            message = f"'{basename}' is not an HP48 object.\nFile size: " + str(Path(filename).expanduser().stat().st_size) + ' bytes'
+            message = f"'{basename}' is not an HP object.\nFile size: " + str(Path(filename).expanduser().stat().st_size) + ' bytes'
 
         return message
 

@@ -1,34 +1,56 @@
 # hpex
-HPex (pronounced "h-pecks", short for "HP Exchange") is a HP 48 to
-Linux transfer tool with graphical and command line interfaces and
-features found in no other Linux<->HP 48 transfer tool.
+HPex (pronounced "h-pecks", short for "HP Exchange") is a RPL HP
+calculator to Linux transfer tool with graphical and command line
+interfaces and features found in no other Linux<->HP transfer tool.
 
-This is a manual describing HPex's features and how to use them. I've
-tried to make it as simple as possible, but watch out for things
-marked **Important:**, as well as those marked in bold. These are
-pitfalls and possible areas of confusion.
+## Why is HPex better?
+Just compare HPex to [HPTalx](http://hptalx.sourceforge.net/), a
+popular application for the same purpose:
+
+| Feature            | HPTalx                | HPex                                     |
+|--------------------|-----------------------|------------------------------------------|
+| remote commands    | yes                   | yes                                      |
+| Kermit server      | yes                   | yes                                      |
+| variable checksums | no                    | yes, and header processing               |
+| XModem             | nope                  | send only                                |
+| serial port        | confusing, outdated   | automatic port detection and x48 support |
+| threading          | none, GUI hangs often | complete, GUI never hangs                |
+| interface          | confusing, outdated   | modern, intuitive, and complete CLI      |
+
 
 # System Requirements
-**Important:** HPex is designed to run on Linux. It will probably work
-on Mac (though you should use
-[Hoppi](https://bitbucket.org/pdo/hoppi2) there), and I'm sure it
-won't work on Windows.
+**Important:** HPex is designed to run on Linux. Don't try to use it
+on another OS. (On macOS, don't use my tool, use
+[Hoppi](https://bitbucket.org/pdo/hoppi2)).
 
-Because the HP 48's main communication system is Kermit, you'll need
-Kermit on your computer. I built HPex around C-Kermit 9.0, and it's
-readily available in both binary and source forms at [Columbia's
-Kermit site](http://www.columbia.edu/kermit/ck90.html#download), and
-probably in your distro's package manager too. The only other
-requirement that can't be installed through pip is
-[wxPython](https://wxpython.org/). I'm not going to explain how to
-install this, because it's highly distro-dependent. That said, it is
-present in many distros' package repositories.
+Also **important:** I don't currently own any of the Meta Kernel
+calculators (the 49G, 49g+, 50g, and 48gII), and as a result, I have
+not tested HPex. I am almost certain that while HPex will function
+with these models (and it supports the higher baud rates these models
+have), the Kermit mode will behave strangely. Furthermore, the CRC
+calculator likely won't work for HP 49 objects. There's more info for
+the curious at the bottom of this document. XModem should work fine.
 
-Note that if you don't want to use HPex's GUI and want to use only the
-command-line interface, you don't actually need wxPython. However, all
-the other dependencies are still needed.
+## Needed Software
+- C-Kermit 9.0
 
-Those other requirements are:
+This is readily available in both binary and source forms at
+[Columbia's Kermit
+site](http://www.columbia.edu/kermit/ck90.html#download), and probably
+in your distro's package manager too. 
+
+- [wxPython](https://wxpython.org/) 4
+
+If you don't want to use HPex's GUI and want to use only the
+command-line interface, you don't need wxPython.
+
+wxPython can be difficult to install. Look for it first in your
+distro's package manager, and if it isn't there, try installing via
+with `pip install wxPython` (or `pip3`). If you install with `pip`, be
+warned that it may take a very long time to install, because `pip` has
+to compile from source.
+
+The other requirements are:
 
 1. [xmodem](https://pypi.org/project/xmodem/)
 2. [PyPubSub](https://pypi.org/project/PyPubSub/) (note that this is different from [pubsub](https://pypi.org/project/pubsub/))
@@ -42,14 +64,6 @@ To install HPex itself, make the `hpex.py` file executable, place the
 whole directory in a convenient location, and add that directory to
 your `$PATH`. HPex will run just fine. You can also rename `hpex.py`
 to something else, like just `hpex`, if you prefer.
-
-Finally, you'll need a calculator. **Important:** I only have an HP
-48GX, so I cannot confirm whether HPex works with a 49G, 49g+, or a
-50g, or any other RPL machines with serial support (though it should
-be a given that a 48S/SX would work just fine).
-
-HPex's GUI has support for both 15360 and 115200 baud transfers, to
-make use of the features of the newer models.
 
 # Advantages over other tools
 ## HPTalx
@@ -394,3 +408,16 @@ a shell (i.e., Kermit tried to access `/dev/pts/3` but there's a
 This is like the above error, but generated by XModem. Again, check
 all your settings, and make sure the calculator was ready to receive
 the file you're trying to send.
+
+## Why HPex will act weird with a MK calc
+The Meta Kernel series added a bunch of new variable types. HPex uses
+string processing to separate the columns from the output of `remote
+directory` in Kermit, and the only way to separate columns is to split
+each line by space (` `). The HP48 has two variable types that include
+spaces: 'Global Name' and 'Real Number'. HPex recognizes these and can
+work around them, but I don't know all the variable types on the MK
+models.
+
+I would also like to add support for the XModem server in the MK
+series. I will eventually get a Meta Kernel calculator if I can find
+one cheap enough.

@@ -1,6 +1,7 @@
 import threading
 
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
+# TODO: object CRC dialog needs to start with the dirchooser in the same directory as the local file box
 # TODO: automatically remove whitespace or prevent typing tab or space in serial port box
 from pathlib import Path
 import os
@@ -60,6 +61,16 @@ class HPexGUI(wx.Frame):
         self.connected = False
         self.xmodem_mode = False
         self.topic = 'HPex'
+        
+        # self.current_local_path is maintained as a Path object. It
+        # only becomes a string when it has to be used in something
+        # that doesn't support Paths directly.
+        # TODO: revert after testing
+        self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
+        #self.current_local_path = Path('/home/liam/tests/')
+        #Path(
+        #    HPexSettingsTools.load_settings().startup_dir)
+        
         # in this class, we are only using 'remote directory', so
         # there's no need to bind kermit.newdata. However, other
         # classes do need to know when Kermit has printed new data.
@@ -103,7 +114,7 @@ class HPexGUI(wx.Frame):
         
         self.Bind(
             # lambda forces the creation of a new object
-            wx.EVT_MENU, lambda e: ObjectInfoDialog(self).go(),
+            wx.EVT_MENU, lambda e: ObjectInfoDialog(self, self.current_local_path).go(),
             self.run_ckfinder_item)
         
         self.run_hp_command_item = self.hp_menu.Append(
@@ -174,14 +185,7 @@ class HPexGUI(wx.Frame):
         self.local_sizer = wx.BoxSizer(wx.VERTICAL)
         self.hp_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # self.current_local_path is maintained as a Path object. It
-        # only becomes a string when it has to be used in something
-        # that doesn't support Paths directly.
-        # TODO: revert after testing
-        self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
-        #self.current_local_path = Path('/home/liam/tests/')
-        #Path(
-        #    HPexSettingsTools.load_settings().startup_dir)
+ 
         self.local_dir = wx.StaticText(
             self.filebox_panel,
             wx.ID_ANY,

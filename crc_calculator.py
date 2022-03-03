@@ -25,10 +25,12 @@ class HPCRCCalculator:
     def calc(self):
         f = open(self.object_file, 'rb')
 
-        romrev_header = f.read(7)
-        if romrev_header != b'HPHP48-':
-            raise HPCRCException('No HPHP48-* header found')
-        
+        romrev_header = f.read(5)#f.read(7)
+        # HP 50 uses HPHP49, as far as I can tell
+        if romrev_header != b'HPHP4':
+            raise HPCRCException('No HPHP4n-* header found')
+
+        f.read(2) # read out the "8-" or "9-" or whatever
         
         romrev = f.read(1)
 
@@ -198,10 +200,11 @@ class HPCRCCalculator:
             
             byte = f.read(1)
 
+        print(self.object_file)
         # must be a list to get edited later
         return [romrev.decode(sys.stdout.encoding),
                 #    we add in the 4.5 + len(name) bytes
-                crc, (nibs / 2) + 4.5 + len(self.object_file.name)]
+                crc, (nibs / 2) + 4.5 + len(f.name)]
 
 
 

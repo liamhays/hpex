@@ -125,9 +125,9 @@ class XModemErrorDialog(wx.Frame):
 
         
 class ObjectInfoDialog(wx.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, initdir):
         wx.Frame.__init__(self, parent, title='HP48 Object Info')
-        #self.parent = parent
+        self.initdir = initdir
         
     def go(self, event=None):
         self.sizer = wx.BoxSizer(wx.VERTICAL) # needed to hold the panel
@@ -138,7 +138,9 @@ class ObjectInfoDialog(wx.Frame):
         self.file_picker = wx.FilePickerCtrl(
             self, wx.ID_ANY, '',
             style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST)
-
+        
+        self.file_picker.SetInitialDirectory(str(self.initdir))
+        
         self.file_picker.Bind(
             wx.EVT_FILEPICKER_CHANGED, self.update_file_info_box)
         
