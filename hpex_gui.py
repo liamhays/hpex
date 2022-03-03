@@ -2,14 +2,13 @@ import threading
 
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
 # TODO: automatically remove whitespace or prevent typing tab or space in serial port box
-# TODO: keyboard shortcuts to copy
 from pathlib import Path
 import os
 
 import wx
 from pubsub import pub
 
-from helpers import FileTools, KermitProcessTools
+from helpers import FileTools, KermitProcessTools, StringTools
 from file_dialogs import FileGetDialog, FileSendDialog
 from dialogs import KermitConnectingDialog, RemoteCommandDialog, KermitErrorDialog, ObjectInfoDialog
 from kermit_pubsub import KermitConnector
@@ -179,8 +178,8 @@ class HPexGUI(wx.Frame):
         # only becomes a string when it has to be used in something
         # that doesn't support Paths directly.
         # TODO: revert after testing
-        #self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
-        self.current_local_path = Path('/home/liam/tests/')
+        self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
+        #self.current_local_path = Path('/home/liam/tests/')
         #Path(
         #    HPexSettingsTools.load_settings().startup_dir)
         self.local_dir = wx.StaticText(
@@ -361,6 +360,13 @@ class HPexGUI(wx.Frame):
         #self.hp_updir_button.Disable()
         #self.hp_files.Enable()
 
+        # The default Frame size is just too small, so we make it
+        # bigger.
+        size = self.GetSize()
+        size *= 1.3
+        self.SetSize(size)
+
+        
         self.Bind(wx.EVT_CLOSE, self.close)
         self.Show(True)
 
@@ -392,7 +398,7 @@ class HPexGUI(wx.Frame):
             
         self.kermit = threading.Thread(
             target=self.kermit_connector.run,
-            args=(self.serial_port_box.GetValue(),
+            args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
                   self,
                   'remote host HOME',
                   self.topic))
@@ -405,7 +411,7 @@ class HPexGUI(wx.Frame):
             
         self.kermit = threading.Thread(
             target=self.kermit_connector.run,
-            args=(self.serial_port_box.GetValue(),
+            args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
                   self,
                   'remote host UPDIR',
                   self.topic))
@@ -513,7 +519,6 @@ class HPexGUI(wx.Frame):
         self.xmodem_mode = False
         self.hp_dir_label.SetLabelText('')
         self.hp_files.DeleteAllItems()
-        self.hp_files.Disable()
         self.hp_dir_label.Enable()
         self.connect_button.Enable()
 
@@ -670,7 +675,7 @@ class HPexGUI(wx.Frame):
             
         self.kermit = threading.Thread(
             target=self.kermit_connector.run,
-            args=(self.serial_port_box.GetValue(),
+            args=(StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
                   self,
                   'remote directory',
                   self.topic,
@@ -726,7 +731,7 @@ class HPexGUI(wx.Frame):
             self.kermit_connector = KermitConnector()
             self.kermit = threading.Thread(
                 target=self.kermit_connector.run,
-                args=(self.serial_port_box.GetValue(),
+                args=(StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
                       self,
                       'remote host ' + f'{varname}' + ' EVAL',
                       self.topic,
@@ -782,7 +787,7 @@ class HPexGUI(wx.Frame):
         FileSendDialog(
             parent=self,
             file_message=msg,
-            port=self.serial_port_box.GetValue(),
+            port=StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
             # we have to give the dialog the full path so that
             # Kermit can get it
             filename=filename.expanduser(),
@@ -795,7 +800,7 @@ class HPexGUI(wx.Frame):
         print('start_local_transfer, index is', index)
         var = self.hpvars[index]
         
-        msg = f"You have chosen to transfer '{var.name}' from the HP48 at " + self.serial_port_box.GetValue() + '.'
+        msg = f"You have chosen to transfer '{var.name}' from the HP48 at " + StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + '.'
         filestats = f'Size: {var.size}\nType: {var.vtype}\nChecksum: {var.crc}'
 
 
@@ -803,7 +808,7 @@ class HPexGUI(wx.Frame):
             parent=self,
             message=msg,
             file_message=filestats,
-            port=self.serial_port_box.GetValue(),
+            port=StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
             varname=var.name,
             current_dir=self.current_local_path, 
             success_callback=self.refresh_all_files)
@@ -814,7 +819,7 @@ class HPexGUI(wx.Frame):
         if self.connected:
             RemoteCommandDialog(
                 self,
-                self.serial_port_box.GetValue()).go()
+                StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue()))).go()
         else:
             self.SetStatusText('Not connected, so remote commands are unavailable')
 
@@ -877,7 +882,7 @@ class HPexGUI(wx.Frame):
         self.connected = False
         self.SetStatusText(
             'Kermit connection to ' +
-            self.serial_port_box.GetValue() + ' was cancelled.')
+            StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + ' was cancelled.')
 
     def kermit_failed(self, cmd, out):
         # If Kermit failed, notify the user, correct various states,
@@ -886,7 +891,7 @@ class HPexGUI(wx.Frame):
         print(out)
         if cmd == 'finish':
             self.SetStatusText("Couldn't finish Kermit server on " +
-                               self.serial_port_box.GetValue()
+                               StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue()))
                                + '.')
             
             print('kermit failed on finish')
@@ -910,7 +915,7 @@ class HPexGUI(wx.Frame):
         self.connected = False # also just in case
         self.SetStatusText(
             "Kermit couldn't reach " +
-            self.serial_port_box.GetValue() + '.')
+            StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + '.')
 
 
         # we must restore the drop targets here, because a failure
@@ -940,7 +945,7 @@ class HPexGUI(wx.Frame):
             self.connect_button.SetLabelText('Connect')
 
             self.SetStatusText('Finished Kermit server on ' +
-                               self.serial_port_box.GetValue() +
+                               StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) +
                                '.')
 
         
@@ -997,7 +1002,7 @@ class HPexGUI(wx.Frame):
                     
                 self.SetStatusText('Updated remote variables.')
             else:
-                self.SetStatusText('Connected to calculator on ' + self.serial_port_box.GetValue() + '.')
+                self.SetStatusText('Connected to calculator on ' + StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + '.')
 
                 
             self.connect_button.SetLabel('Disconnect')
@@ -1019,11 +1024,13 @@ class HPexGUI(wx.Frame):
         # disconnecting. If we're connected, we disconnect, and if
         # we're disconnected, we connect.
 
+        # remove whitespace from the serial port box
+        self.serial_port_box.SetValue(StringTools.trim_serial_port(self.serial_port_box.GetValue()))
         # do nothing if in XModem mode
         if self.xmodem_mode:
             return
         
-        if self.serial_port_box.GetValue() == '':
+        if StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) == '':
             print('empty serial port box')
             wx.MessageDialog(self, 'Serial port box is empty!',
                              caption='Serial error',
@@ -1043,7 +1050,7 @@ class HPexGUI(wx.Frame):
             
             self.kermit = threading.Thread(
                 target=self.kermit_connector.run,
-                args=(self.serial_port_box.GetValue(),
+                args=(StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
                       self,
                       'remote directory',
                       self.topic,
@@ -1065,7 +1072,7 @@ class HPexGUI(wx.Frame):
 
             self.kermit = threading.Thread(
                 target=self.kermit_connector.run,
-                args=(self.serial_port_box.GetValue(),
+                args=(StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
                       self,
                       cmd + 'finish',
                       self.topic,

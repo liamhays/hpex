@@ -292,3 +292,7 @@ class FileTools:
         # greatest-numbered port
         return devptys[-1]
         
+class StringTools(object):
+    @staticmethod
+    def trim_serial_port(port_str):
+        return re.sub(r'\s+', '', port_str)
