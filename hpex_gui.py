@@ -87,16 +87,8 @@ class HPexGUI(wx.Frame):
         
         self.menubar = wx.MenuBar()
         self.file_menu = wx.Menu()
-        self.local_menu = wx.Menu()
         self.hp_menu = wx.Menu()
         
-        self.settings_item = self.file_menu.Append(
-            # pretty much self-explanatory
-            wx.ID_PREFERENCES, 'Settings...\tCtrl+,', '')
-        
-        self.Bind(
-            wx.EVT_MENU, lambda e: SettingsFrame(self).go(), self.settings_item)
-
         self.send_menuitem = self.file_menu.Append(
             wx.ID_ANY, '&Send selected local file\tCtrl+S', '')
 
@@ -108,14 +100,27 @@ class HPexGUI(wx.Frame):
 
         self.Bind(
             wx.EVT_MENU, self.get_menu_callback, self.get_menuitem)
-        self.run_ckfinder_item = self.local_menu.Append(
+
+        self.file_menu.AppendSeparator()
+                
+        self.run_ckfinder_item = self.file_menu.Append(
             wx.ID_ANY, 'Calculate checksum of &object...\tCtrl+O',
-            'Calculate the checksum and filesize, and find the ROM revision.')
+            'Calculate information about HP object')
         
         self.Bind(
             # lambda forces the creation of a new object
             wx.EVT_MENU, lambda e: ObjectInfoDialog(self, self.current_local_path).go(),
             self.run_ckfinder_item)
+        self.file_menu.AppendSeparator()
+
+        self.settings_item = self.file_menu.Append(
+            # pretty much self-explanatory
+            wx.ID_PREFERENCES, 'Settings...\tCtrl+,', '')
+        
+        self.Bind(
+            wx.EVT_MENU, lambda e: SettingsFrame(self).go(), self.settings_item)
+
+
         
         self.run_hp_command_item = self.hp_menu.Append(
             wx.ID_ANY, '&Run remote command...\tCtrl+R',
@@ -127,7 +132,6 @@ class HPexGUI(wx.Frame):
             self.run_hp_command_item)
         
         self.menubar.Append(self.file_menu, '&File')
-        self.menubar.Append(self.local_menu, '&Local')
         self.menubar.Append(self.hp_menu, '&Remote')
         
         self.SetMenuBar(self.menubar)

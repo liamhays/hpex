@@ -12,8 +12,8 @@ from helpers import KermitProcessTools, XModemProcessTools
 from settings import HPexSettingsTools
 from kermit_variable import KermitVariable
 
-# TODO: FileGetDialog should say something about progress being unavailable.
 # TODO: When the user presses Close on an error dialog, it should close the parent file send/get dialog too.
+# TODO: does closing the dialog also cancel the transfer operation?
 
 # Because the GUI is drag and drop-based, the transfer dialogs start a
 # transfer on initialization.
@@ -366,6 +366,14 @@ class FileGetDialog(wx.Frame):
             0,
             wx.EXPAND | wx.ALL)
 
+        self.label_sizer.Add(
+            wx.StaticText(
+                self,
+                wx.ID_ANY,
+                'Progress not available when receiving.'),
+            0,
+            wx.EXPAND | wx.ALL)
+                
         self.file_contents_box = wx.StaticBoxSizer(
             wx.VERTICAL, self, 'File info')
 
