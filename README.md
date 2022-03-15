@@ -66,7 +66,7 @@ whole directory in a convenient location, and add that directory to
 your `$PATH`. HPex will run just fine. You can also rename `hpex.py`
 to something else, like just `hpex`, if you prefer.
 
-# User Manual
+# Using HPex
 When you start HPex without any arguments on the command line, it
 launches into GUI mode.
 
@@ -137,9 +137,11 @@ ports, following these steps:
    start `x48` *after* starting HPex, otherwise HPex won't be able to
    find the empty space.
    
-3. Finally, if no empty spaces are found, the highest-numbered
-   `/dev/pts/` port is chosen.
-
+3. Finally, if no empty spaces are found, HPex will find the highest
+   `/dev/pts` port, then add one. For example, if the highest is
+   `/dev/pts/3`, HPex will automatically use `/dev/pts/4`.
+   
+   
 The serial port box is also just a standard entry box, and you can
 type any port you want to use. The Refresh All button will rescan for
 serial ports.
@@ -300,7 +302,8 @@ the file you're trying to send.
 
 ## Why HPex will act weird with a MK calc
 First off, Meta Kernel calcs with built-in USB might show up as
-`/dev/ttyACM*` ports on modern kernels. 
+`/dev/ttyACM*` ports on modern kernels. This obviously needs to be
+tested.
 
 The Meta Kernel series added a bunch of new variable types. HPex uses
 string processing to separate the columns from the output of `remote
