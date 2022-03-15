@@ -19,7 +19,7 @@ class XModemConnector:
             use_callafter=True, alt_options=None): # ptopic for parent
         if use_callafter:
             # So this is kind of a kludge. We don't want to globally
-            # import wx if we'r erunning in the CLI, to keep it light
+            # import wx if we'r. running in the CLI, to keep it light
             # and fast, but we can't conditionally globally
             # import. However, we /can/ import wx in each and every
             # function that needs it, _if and only if_
@@ -51,23 +51,23 @@ class XModemConnector:
             settings = HPexSettingsTools.load_settings()
         else:
             settings = alt_options
-        baud = settings.baud_rate
+        baud = settings['baud_rate']
         parity = None
-        if settings.parity == '0 (None)':
+        if settings['parity'] == '0 (None)':
             parity = serial.PARITY_NONE
-        elif settings.parity == '1 (Odd)':
+        elif settings['parity'] == '1 (Odd)':
             parity = serial.PARITY_ODD
-        elif settings.parity == '2 (Even)':
+        elif settings['parity'] == '2 (Even)':
             parity = serial.PARITY_EVEN
-        elif settings.parity == '3 (Mark)':
+        elif settings['parity'] == '3 (Mark)':
             parity = serial.PARITY_MARK
-        elif settings.parity == '4 (Space)':
+        elif settings['parity'] == '4 (Space)':
             parity = serial.PARITY_SPACE
 
         #print(port)
         #print(baud)
         #print(parity)
-        #print(settings.parity)
+        #print(settings['parity'])
         # we aren't catching serial.serialutil.SerialExceptions
         try:
             self.ser = serial.Serial(

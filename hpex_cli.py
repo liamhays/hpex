@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pubsub import pub
 
-from settings import HPexSettings, HPexSettingsTools
+from settings import HPexSettingsTools
 
 from kermit_pubsub import KermitConnector
 from xmodem_pubsub import XModemConnector
@@ -83,7 +83,7 @@ class HPexCLI:
             self.baud = args.baud
         else:
             # load the port specified in the settings
-            self.baud = self.settings.baud_rate
+            self.baud = self.settings['baud_rate']
             
         if args.xmodem:
             # self.protocol is the one that gets displayed to the user
@@ -110,7 +110,7 @@ class HPexCLI:
                 sys.exit(1)
                 # die
         else:
-            self.parity = self.settings.parity
+            self.parity = self.settings['parity']
 
         #print(self.parity)
         if args.cksum:
@@ -120,7 +120,7 @@ class HPexCLI:
                 
             self.cksum = args.cksum
         else:
-            self.cksum = self.settings.kermit_cksum
+            self.cksum = self.settings['kermit_cksum']
 
         if args.filemode:
             if args.filemode == 'auto':
@@ -133,7 +133,7 @@ class HPexCLI:
                 print(f"Error: Kermit file mode '{args.filemode}' not valid. Please use a valid option.")
                 sys.exit(1)
         else:
-            self.file_mode = self.settings.file_mode
+            self.file_mode = self.settings['file_mode']
 
         if args.asname:
             self.asname = args.asname[0]
@@ -175,12 +175,14 @@ class HPexCLI:
         # the progress bar. if we have, we don't do it again, so that
         # the progress bar stays just one line.
         self.already_wrote_100 = False
-        
-        options = HPexSettings(
-            baud_rate=self.baud,
-            parity=self.parity,
-            file_mode=self.file_mode,
-            kermit_cksum=self.cksum)
+
+        #TODO: WHAT IS THIS
+        options = HPexSettingsTools.load_settings()
+
+        options['baud_rate'] = self.baud
+        options['parity'] = self.parity
+        options['file_mode'] = self.file_mode
+        options['kermit_cksum'] = self.cksum
 
         if not self.get:
             print(f"Starting transfer of '{self.filename}' to {self.port} using {self.protocol}...")

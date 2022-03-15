@@ -25,7 +25,7 @@ class SettingsFrame(wx.Frame):
             self, wx.ID_ANY, path=os.getcwd())
 
         self.startup_dir_chooser.SetPath(
-            str(Path(self.current_settings.startup_dir).expanduser()))
+            str(Path(self.current_settings['startup_dir']).expanduser()))
         
         self.main_sizer.Add(
             self.startup_dir_chooser, pos=(0, 1))
@@ -37,7 +37,7 @@ class SettingsFrame(wx.Frame):
 
         self.kermit_executable_box = wx.TextCtrl(self)
         self.main_sizer.Add(self.kermit_executable_box, pos=(1, 1))
-        self.kermit_executable_box.SetValue(self.current_settings.kermit_executable)
+        self.kermit_executable_box.SetValue(self.current_settings['kermit_executable'])
         # while the 48 only supports the first four baud rates, the 49
         # supports 15360, and the 49g+ and 50g, over USB, are fixed at
         # 115200. While the 50g also supports other rates through the
@@ -53,7 +53,7 @@ class SettingsFrame(wx.Frame):
         
         self.baud_rate_choice.SetSelection(
             self.baud_rate_choices.index(
-                self.current_settings.baud_rate))
+                self.current_settings['baud_rate']))
 
         self.file_mode_choices = ['Auto', 'Binary', 'ASCII']
         self.file_mode_choice = wx.Choice(
@@ -61,7 +61,7 @@ class SettingsFrame(wx.Frame):
         
         self.file_mode_choice.SetSelection(
             self.file_mode_choices.index(
-                self.current_settings.file_mode))
+                self.current_settings['file_mode']))
 
         self.parity_choices = [
             '0 (None)', '1 (Odd)', '2 (Even)', '3 (Mark)', '4 (Space)']
@@ -71,7 +71,7 @@ class SettingsFrame(wx.Frame):
 
         self.parity_choice.SetSelection(
             self.parity_choices.index(
-                self.current_settings.parity))
+                self.current_settings['parity']))
 
         self.kermit_cksum_choices = ['1', '2', '3']
         self.kermit_cksum_choice = wx.Choice(
@@ -79,42 +79,42 @@ class SettingsFrame(wx.Frame):
 
         self.kermit_cksum_choice.SetSelection(
             self.kermit_cksum_choices.index(
-                self.current_settings.kermit_cksum))
+                self.current_settings['kermit_cksum']))
         
         self.pty_search_check = wx.CheckBox(
             self, wx.ID_ANY,
             'Disable pty search, look only for ttyUSB ports')
 
         self.pty_search_check.SetValue(
-            self.current_settings.disable_pty_search)
+            self.current_settings['disable_pty_search'])
 
         self.disconnect_on_close_check = wx.CheckBox(
             self, wx.ID_ANY,
             'Disconnect the calculator on close if connected')
 
         self.disconnect_on_close_check.SetValue(
-            self.current_settings.disconnect_on_close)
+            self.current_settings['disconnect_on_close'])
 
         self.reset_on_disconnect_check = wx.CheckBox(
             self, wx.ID_ANY,
             'Reset calculator directory on disconnect')
 
         self.reset_on_disconnect_check.SetValue(
-            self.current_settings.reset_directory_on_disconnect)
+            self.current_settings['reset_directory_on_disconnect'])
 
         self.ask_for_overwrite_check = wx.CheckBox(
             self, wx.ID_ANY,
             'Ask to or warn about overwriting')
 
         self.ask_for_overwrite_check.SetValue(
-            self.current_settings.ask_for_overwrite)
+            self.current_settings['ask_for_overwrite'])
 
         self.start_in_xmodem_check = wx.CheckBox(
             self, wx.ID_ANY,
             'Start HPex in XModem mode')
 
         self.start_in_xmodem_check.SetValue(
-            self.current_settings.start_in_xmodem)
+            self.current_settings['start_in_xmodem'])
         
         self.ok_button = wx.Button(self, wx.ID_OK, 'OK')
         self.ok_button.Bind(wx.EVT_BUTTON, self.ok)
@@ -178,17 +178,17 @@ class SettingsFrame(wx.Frame):
     def ok(self, event):
         print('ok')
         # Nothing we can really do about these lines...
-        self.current_settings.startup_dir = self.startup_dir_chooser.GetPath()
-        self.current_settings.baud_rate = self.baud_rate_choices[self.baud_rate_choice.GetSelection()]
-        self.current_settings.kermit_executable = self.kermit_executable_box.GetValue()
-        self.current_settings.parity = self.parity_choices[self.parity_choice.GetSelection()]
-        self.current_settings.file_mode = self.file_mode_choices[self.file_mode_choice.GetSelection()]
-        self.current_settings.kermit_cksum = self.kermit_cksum_choices[self.kermit_cksum_choice.GetSelection()]
-        self.current_settings.disable_pty_search = self.pty_search_check.GetValue()
-        self.current_settings.disconnect_on_close = self.disconnect_on_close_check.GetValue()
-        self.current_settings.reset_directory_on_disconnect = self.reset_on_disconnect_check.GetValue()
-        self.current_settings.ask_for_overwrite = self.ask_for_overwrite_check.GetValue()
-        self.current_settings.start_in_xmodem = self.start_in_xmodem_check.GetValue()
+        self.current_settings['startup_dir'] = self.startup_dir_chooser.GetPath()
+        self.current_settings['baud_rate'] = self.baud_rate_choices[self.baud_rate_choice.GetSelection()]
+        self.current_settings['kermit_executable'] = self.kermit_executable_box.GetValue()
+        self.current_settings['parity'] = self.parity_choices[self.parity_choice.GetSelection()]
+        self.current_settings['file_mode'] = self.file_mode_choices[self.file_mode_choice.GetSelection()]
+        self.current_settings['kermit_cksum'] = self.kermit_cksum_choices[self.kermit_cksum_choice.GetSelection()]
+        self.current_settings['disable_pty_search'] = self.pty_search_check.GetValue()
+        self.current_settings['disconnect_on_close'] = self.disconnect_on_close_check.GetValue()
+        self.current_settings['reset_directory_on_disconnect'] = self.reset_on_disconnect_check.GetValue()
+        self.current_settings['ask_for_overwrite'] = self.ask_for_overwrite_check.GetValue()
+        self.current_settings['start_in_xmodem'] = self.start_in_xmodem_check.GetValue()
         print(self.current_settings)
         # I could just use the builtin open() here, but I want to keep
         # my file access consistent across the settings frame. Because

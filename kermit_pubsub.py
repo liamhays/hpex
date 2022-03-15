@@ -59,16 +59,16 @@ class KermitConnector:
         else:
             self.settings = alt_options
 
-        invocation = [self.settings.kermit_executable, '-Y', '-H', '-C', 'set parity none,set flow none,set carrier-watch off,set modem type direct,set block 3,set control prefix all,set protocol kermit,set send timeout 1,set receive timeout 1,set retry-limit 1,set file display crt,set file names literal,set hints off,set quiet on,']
+        invocation = [self.settings['kermit_executable'], '-Y', '-H', '-C', 'set parity none,set flow none,set carrier-watch off,set modem type direct,set block 3,set control prefix all,set protocol kermit,set send timeout 1,set receive timeout 1,set retry-limit 1,set file display crt,set file names literal,set hints off,set quiet on,']
         
-        file_mode = self.settings.file_mode
+        file_mode = self.settings['file_mode']
         if file_mode == 'Binary':
             invocation[-1] += 'set file type binary,'
         elif file_mode == 'ASCII':
             invocation[-1] += 'set file type text,'
         # no else, we just won't do anything if it's set to Auto
         
-        parity = self.settings.parity
+        parity = self.settings['parity']
         # '0 (None)', '1 (Odd)', '2 (Even)', '3 (Mark)', '4 (Space)'
         
         # we check if the number is in the parity value, because the
@@ -97,7 +97,7 @@ class KermitConnector:
         invocation.append('-l')
         invocation.append(port)
         invocation.append('-b')
-        invocation.append(self.settings.baud_rate)
+        invocation.append(self.settings['baud_rate']
 
         try:
             self.proc = ptyprocess.PtyProcessUnicode.spawn(invocation)

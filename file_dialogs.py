@@ -36,7 +36,7 @@ class FileSendDialog(wx.Frame):
         # ask for overwriting, but note that it only matters in Kermit
         # mode and if the user wants it.
 
-        ask = HPexSettingsTools.load_settings().ask_for_overwrite
+        ask = HPexSettingsTools.load_settings()['ask_for_overwrite']
         if file_already_exists and not self.xmodem and ask:
             self.result = wx.MessageDialog(
                 self,
@@ -316,7 +316,7 @@ class FileGetDialog(wx.Frame):
 
         # check for the file in the current local directory, if it
         # exists, ask about overwriting
-        ask = HPexSettingsTools.load_settings().ask_for_overwrite
+        ask = HPexSettingsTools.load_settings()['ask_for_overwrite']
         if varname in os.listdir(self.current_dir) and ask:
             # just let the user know, so that they know what will
             # happen
