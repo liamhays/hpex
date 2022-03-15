@@ -84,7 +84,7 @@ class KermitConnector:
         elif parity == '4 (Space)':
             invocation[-1] += 'set parity space,'
 
-        cksum = self.settings.kermit_cksum
+        cksum = self.settings['kermit_cksum']
         # kermit_cksum is just a number in a string, so we can append
         # it directly
 
@@ -97,7 +97,7 @@ class KermitConnector:
         invocation.append('-l')
         invocation.append(port)
         invocation.append('-b')
-        invocation.append(self.settings['baud_rate']
+        invocation.append(self.settings['baud_rate'])
 
         try:
             self.proc = ptyprocess.PtyProcessUnicode.spawn(invocation)

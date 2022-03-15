@@ -435,11 +435,18 @@ class HPexGUI(wx.Frame):
         # If we remove the drop target, you can't drop here, so the
         # interface seems more normal: you can only drop on the other
         # listctrl. The same thing is implemented in hp_file_drag.
-        self.local_files.SetDropTarget(None)
+
         file_path = Path(
             self.current_local_path,
             self.local_files.GetItemText(
                 self.local_files.GetFirstSelected()))
+
+        # can't drag a directory!
+        if os.path.isdir(file_path):
+            print('is directory')
+            return
+
+        self.local_files.SetDropTarget(None)
         print('file_path is', file_path)
 
         # trigger the drop event

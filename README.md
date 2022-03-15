@@ -148,7 +148,9 @@ serial ports.
 To copy a file, simply drag and drop it from one window to
 another. You can also press `Ctrl-S` to send the selected local file,
 and `Ctrl-G` to get the selected remote file. Ctrl-G only works if
-HPex is connected over Kermit.
+HPex is connected over Kermit. Note that you cannot drag a local
+directory onto the calculator filebox, but you can copy a calculator
+directory onto the computer.
 
 You can send files with Kermit even if you aren't connected to the
 calculator.
