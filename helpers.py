@@ -252,7 +252,7 @@ class FileTools:
             parent.SetStatusText(
                 'No ttyUSB ports found, serial port box empty.')
 
-        disable_pty_search = HPexSettingsTools.load_settings().disable_pty_search
+        disable_pty_search = HPexSettingsTools.load_settings()['disable_pty_search']
 
         if disable_pty_search:
             # just return nothing, to finish off the else above

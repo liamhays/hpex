@@ -2,7 +2,17 @@ import pickle
 from pathlib import Path
 import os
 
-#import wx
+# TODO: should probably end up being a sequential version number (as
+# opposed to semantic), and an application global of some kind
+current_hpex_version = 1
+
+# Although it is less OO, we use a dict to store settings instead of a
+# dataclass. This has two advantages:
+# - it allows us to easily contain a version number, which lets
+#   a version transition seamlessly copy old settings over
+# - it also makes it easier to add new settings (though the
+#   dataclass module would also let this happen, it doesn't
+#   have any versioning)
 
 class HPexSettingsTools:
     @staticmethod
@@ -12,53 +22,65 @@ class HPexSettingsTools:
         if not p.is_file():
             print('making new .hpexrc')
             # make new file with the defaults
-            s = HPexSettings()
+            d = HPexSettingsTools.create_settings_dict()
             f = p.open('wb')
-            pickle.dump(s, f)
+            pickle.dump(d, f)
             f.close()
 
-            return s
+            return d
 
         #print('is_file')
         f = p.open('rb')
-        ob = pickle.load(f)
+        # if the current version number is greater than the version number in the file, 
+        d = pickle.load(f)
+        if d['version'] < current_hpex_version:
+            # now we need to upgrade. this iterates over every entry
+            # in the new dictionary and checks if a value for it
+            # exists in the old dict. if so, it writes it to the new
+            # dict, and otherwise, it keeps that key at the default value.
+            print('updating version, old is', d['version'], 'new is', current_hpex_version)
+            d_keys = d.keys()
+            new_d = HPexSettingsTools.create_settings_dict()
+            for key in new_d:
+                print('key', key, 'found ', end='')
+                if key in d_keys:
+                    print('true')
+                    new_d[key] = d[key]
+                else:
+                    print('false')
+
+            # set version key to current version, it will have been
+            # overwritten by the loop above
+            new_d['version'] = current_hpex_version
+            # now we need to save that to the file
+            f.close()
+            
+            f = p.open('wb')
+            pickle.dump(new_d, f)
+            f.close()
+
+            # and return the new improved dict
+            return new_d
+
+        # finally, otherwise just return the dict we read before
         f.close()
-        return ob
+        return d
     
-    # we're going to leave the save functionality alone for now,
-    # because only HPexSettings ever needs it.
-class HPexSettings:
-    def __init__(self, startup_dir='~',
-                 kermit_executable='ckermit',
-                 baud_rate='9600', file_mode='Auto',
-                 parity='0 (None)', kermit_cksum='3',
-                 disable_pty_search=False,
-                 disconnect_on_close=False,
-                 reset_directory_on_disconnect=True,
-                 ask_for_overwrite=True,
-                 start_in_xmodem=False):
-        
-        self.startup_dir = startup_dir
-        self.kermit_executable = kermit_executable
-        self.baud_rate = baud_rate
-        self.file_mode = file_mode
-        self.parity = parity
-        self.kermit_cksum = kermit_cksum
-        self.disable_pty_search = disable_pty_search
-        self.disconnect_on_close = disconnect_on_close
-        self.reset_directory_on_disconnect = reset_directory_on_disconnect
-        self.ask_for_overwrite = ask_for_overwrite
-        self.start_in_xmodem = start_in_xmodem
-    def __str__(self):
-        return (
-            'startup_dir: ' + str(self.startup_dir) +
-            '  kermit_executable: ' + str(self.kermit_executable) +
-            '  baud_rate: ' + str(self.baud_rate) +
-            '  file_mode: ' + str(self.file_mode) +
-            '  parity: ' + str(self.parity) +
-            '  kermit_cksum: ' + str(self.kermit_cksum) +
-            '  disable_pty_search: ' + str(self.disable_pty_search) +
-            '  disconnect_on_close: ' + str(self.disconnect_on_close) +
-            '  reset_directory_on_disconnect: ' + str(self.reset_directory_on_disconnect) +
-            '  ask_for_overwrite: ' + str(self.ask_for_overwrite) +
-            '  start_in_xmodem: ' + str(self.start_in_xmodem))
+    """Create a new settings dictionary with default values and return it."""
+    @staticmethod
+    def create_settings_dict() -> dict:
+        return {
+            'version': current_hpex_version,
+            'startup_dir': '~', # TODO: should probably be a Path
+            'kermit_executable': 'ckermit',
+            'baud_rate': '9600',
+            'file_mode': 'Auto',
+            'parity': '0 (None)',
+            'kermit_cksum': '3',
+            'disable_pty_search': False,
+            'disconnect_on_close': False,
+            'reset_directory_on_disconnect': True,
+            'ask_for_overwrite': True,
+            'start_in_xmodem': False
+        }
+

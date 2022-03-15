@@ -17,19 +17,19 @@ popular application for the same purpose:
 | threading          | none, GUI hangs often | complete, GUI never hangs                |
 | interface          | confusing, outdated   | modern, intuitive, and complete CLI      |
 
+Furthermore, HPex is written in pure Python 3, using wxPython, which
+abstracts GTK3 APIs, and is guaranteed to be up-to-date as new GUI
+libraries emerge. This means that HPex can be maintained and upgraded
+more or less indefinitely.
 
 # System Requirements
 **Important:** Although wxPython is cross-platform, HPex is designed
 to run on Linux. Don't try to use it on another OS.
 
 Also **important:** I don't currently own any of the Meta Kernel
-calculators (the 49G, 49g+, 50g, and 48gII), and as a result, I have
-not tested HPex. I am almost certain that while HPex will function
-with these models (and it supports the higher baud rates these models
-have), the Kermit mode will behave strangely. Furthermore, the CRC
-calculator likely won't work for HP 49 objects. There's more info for
-the curious at the bottom of this document. XModem, however, should
-work fine.
+calculators (the 49G, 49g+, 50g, and 48gII). As a result, consider
+HPex unstable for use with these models. There's more info for the
+curious at the bottom of this document.
 
 ## Software Requirements
 - Python 3.9 or better
@@ -92,6 +92,16 @@ Finally, there are two listboxes. The left listbox shows the files in
 the current local directory, and the right listbox (which is empty on
 startup) shows the files on the calculator when connected over Kermit.
 A statusbox sits at the bottom of the window.
+
+## Connecting to a calculator
+Place your HP calculator in Kermit server mode, configure HPex's
+serial port, and press Connect. HPex will fetch the current calculator
+directory and variables in that directory and list them in the
+right-hand listbox.
+
+**Important:** make sure your calculator is in translate mode 3. If it
+isn't, HPex will almost surely crash if there are any variables whose
+names use the HP 48's extended ASCII.
 
 ## Finding a serial port
 When you start HPex, it begins a search in `/dev` for potential serial

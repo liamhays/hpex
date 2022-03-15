@@ -12,9 +12,6 @@ from helpers import KermitProcessTools, XModemProcessTools
 from settings import HPexSettingsTools
 from kermit_variable import KermitVariable
 
-# TODO: When the user presses Close on an error dialog, it should close the parent file send/get dialog too.
-# TODO: does closing the dialog also cancel the transfer operation?
-
 # Because the GUI is drag and drop-based, the transfer dialogs start a
 # transfer on initialization.
 class FileSendDialog(wx.Frame):
@@ -121,7 +118,7 @@ class FileSendDialog(wx.Frame):
         self.transfer_sizer.Add(
             self.cancel_button, 0,
             wx.EXPAND | wx.ALL)
-        self.Bind(wx.EVT_CLOSE, self.on_close)
+        self.Bind(wx.EVT_CLOSE, self.cancel)
         self.SetSizerAndFit(self.transfer_sizer)
 
         self.Show(True)
@@ -276,6 +273,7 @@ class FileSendDialog(wx.Frame):
     def on_close(self, event=None):
         # unsubscribe to prevent accessing deleted objects
         # from https://stackoverflow.com/a/62105716
+
         pub.unsubscribe(
             self.kermit_newdata, f'kermit.newdata.{self.topic}')
         pub.unsubscribe(
@@ -402,7 +400,7 @@ class FileGetDialog(wx.Frame):
             self.cancel_button, 0,
             wx.EXPAND | wx.ALL)
 
-        self.Bind(wx.EVT_CLOSE, self.on_close)
+        self.Bind(wx.EVT_CLOSE, self.cancel)
         self.SetSizerAndFit(self.transfer_sizer)
 
         self.Show(True)

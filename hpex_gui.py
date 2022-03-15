@@ -1,8 +1,6 @@
 import threading
 
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
-# TODO: object CRC dialog needs to start with the dirchooser in the same directory as the local file box
-# TODO: automatically remove whitespace or prevent typing tab or space in serial port box
 from pathlib import Path
 import os
 
@@ -65,11 +63,10 @@ class HPexGUI(wx.Frame):
         # self.current_local_path is maintained as a Path object. It
         # only becomes a string when it has to be used in something
         # that doesn't support Paths directly.
-        # TODO: revert after testing
-        self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
+        #self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
         #self.current_local_path = Path('/home/liam/tests/')
-        #Path(
-        #    HPexSettingsTools.load_settings().startup_dir)
+        self.current_local_path = Path(
+            HPexSettingsTools.load_settings()['startup_dir'])
         
         # in this class, we are only using 'remote directory', so
         # there's no need to bind kermit.newdata. However, other
@@ -354,7 +351,7 @@ class HPexGUI(wx.Frame):
 
         self.disable_on_disconnect()
 
-        xmodem = HPexSettingsTools.load_settings().start_in_xmodem
+        xmodem = HPexSettingsTools.load_settings()['start_in_xmodem']
         if xmodem:
             self.set_xmodem_ui_layout(event=None)
             # select the XModem radiobutton
@@ -434,7 +431,6 @@ class HPexGUI(wx.Frame):
         hp_drop_target = HPTextDropTarget(self.hp_files)
         self.hp_files.SetDropTarget(hp_drop_target)
         
-    # TODO: implement Kermit send without server connection
     def local_file_drag(self, event):
         # If we remove the drop target, you can't drop here, so the
         # interface seems more normal: you can only drop on the other
@@ -594,7 +590,7 @@ class HPexGUI(wx.Frame):
 
         # put this here so that it is always shown, even if we change
         # paths
-        self.SetStatusText('Updated local files.')
+        #self.SetStatusText('Updated local files.')
         
     def refresh_local_files(self):
         # The difference between populate_local_files() and
@@ -959,7 +955,6 @@ class HPexGUI(wx.Frame):
         
         elif cmd == 'remote directory':
             if not self.connected:
-                self.connected = True
                 print('first connect')
                 self.kermit_dialog.Close()
                 
@@ -1008,13 +1003,20 @@ class HPexGUI(wx.Frame):
                 else:
                     self.reselect_hp_var()
                     
-                self.SetStatusText('Updated remote variables.')
+                #self.SetStatusText('Updated remote variables.')
             else:
-                self.SetStatusText('Connected to calculator on ' + StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + '.')
+                self.SetStatusText(
+                    'Connected to calculator on ' +
+                        StringTools.trim_serial_port(
+                            self.serial_port_box.GetValue()) + '.')
+
+                print('connected')
 
                 
             self.connect_button.SetLabel('Disconnect')
             self.enable_on_connect()
+            self.connected = True
+                            
             # don't disable connect_button here!
             # now, we can sort out Kermit's output and put it in
             # the list
@@ -1098,11 +1100,18 @@ class HPexGUI(wx.Frame):
         
             
     def close(self, event):
-        if HPexSettingsTools.load_settings().disconnect_on_close and self.connected:
-            # disconnect because we're now connected
-            self.connect_callback(event=None)
+        if self.connected:
+            # there's no reason to go through the whole process of
+            # loading and reading the file if we aren't connected
+            if HPexSettingsTools.load_settings()['disconnect_on_close']:
+                # disconnect because we're now connected
+                self.connect_callback(event=None)
             
         # If Kermit fails here, HPex will stop for a short moment
         # until Kermit gives up. I don't think this is an issue.
         self.Destroy()
 
+
+
+if __name__ == '__main__':
+    print("Don't run this file directly, run hpex.py to launch the HPex GUI.")

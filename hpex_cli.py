@@ -297,3 +297,8 @@ class HPexCLI:
         # Print New Line on Complete
         if iteration == total: 
             print()
+
+
+
+if __name__ == '__main__':
+    print("Don't run this file directly, run hpex.py and pass command line arguments to that file.")
