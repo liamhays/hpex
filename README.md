@@ -45,11 +45,17 @@ in your distro's package manager too.
 If you don't want to use HPex's GUI and want to use only the
 command-line interface, you don't need wxPython.
 
-wxPython can be difficult to install. Look for it first in your
-distro's package manager, and if it isn't there, try installing via
-with `pip install wxPython` (or `pip3`). If you install with `pip`, be
-warned that it may take a very long time to install, because `pip` has
-to compile from source.
+wxPython can be difficult to install. Some distros (including Arch
+Linux) have it in the package manager. **This is the preferable
+option.** For other distros, try looking on the wxPython website:
+(https://wxpython.org/pages/downloads/). Look for a Python wheel file
+for your distro.
+
+If it is no package manager item or Python wheel, try installing via
+with `pip` or by building the source tarball. Note that installing
+with `pip` does not show progress information, while the source
+tarball build does. wxPython is a large codebase and that progress
+info is probably preferable.
 
 The other requirements are:
 
@@ -64,7 +70,8 @@ PyPubSub ptyprocess pyserial`.
 To install HPex itself, make the `hpex.py` file executable, place the
 whole directory in a convenient location, and add that directory to
 your `$PATH`. HPex will run just fine. You can also rename `hpex.py`
-to something else, like just `hpex`, if you prefer.
+to something else, like just `hpex`, if you prefer. I am looking into
+perhaps making an AppImage distribution.
 
 # Using HPex
 When you start HPex without any arguments on the command line, it

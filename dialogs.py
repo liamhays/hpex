@@ -187,7 +187,7 @@ class ObjectInfoDialog(wx.Frame):
         # updated accordingly.
         self.Fit()
 
-
+# TODO: this should have red/green or similar colors to distinguish send and receive
 class RemoteCommandDialog(wx.Frame):
     def __init__(self, parent, port):
         wx.Frame.__init__(self, parent, title='Run Remote Command')

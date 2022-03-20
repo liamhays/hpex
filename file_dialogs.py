@@ -184,6 +184,8 @@ class FileSendDialog(wx.Frame):
         
         
     def xmodem_done(self, file_count, total, success, error):
+        self.parent.SetStatusText(
+            f"Successfully transferred '{self.basename}' to calculator.")
         # xmodem worked, clear stuff up
         self.reset_progress(' Done!')
         self.on_close(event=None)
@@ -225,6 +227,8 @@ class FileSendDialog(wx.Frame):
         self.Fit()
 
     def kermit_done(self, cmd, out):
+        self.parent.SetStatusText(
+            f"Successfully transferred '{self.basename}' to calculator.")
         print('kermit succeeded')
 
         self.reset_progress(extra_text=' Done!')
@@ -439,7 +443,7 @@ class FileGetDialog(wx.Frame):
         
     def kermit_done(self, cmd, out):
         self.parent.SetStatusText(
-            f'Successfully transferred {self.varname}.')
+            f"Successfully transferred '{self.varname}' from calculator.")
         print('kermit succeeded')
         self.reset_progress()
         if callable(self.success_callback):
@@ -447,9 +451,6 @@ class FileGetDialog(wx.Frame):
         self.on_close(event=None)
         
     def run_kermit(self, event):
-        # we're not going to worry about moving, because we can't
-        # differentiate easily between directories and variables
-
         if self.overwrite:
             command = 'set file collision overwrite,'
         else:

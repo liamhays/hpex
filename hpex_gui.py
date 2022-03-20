@@ -1,6 +1,7 @@
 import threading
 
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
+# global TODO (more urgent): fix the statusbar
 from pathlib import Path
 import os
 
@@ -480,7 +481,7 @@ class HPexGUI(wx.Frame):
         
         hp_drop_target = HPTextDropTarget(self.hp_files)
         self.hp_files.SetDropTarget(hp_drop_target)
-        
+
         
     def disable_on_disconnect(self):
         # These two functions are pretty obvious. Clear and disable or
@@ -560,7 +561,7 @@ class HPexGUI(wx.Frame):
         # dirpicker so that both ways of changing directories
         # (double-click in listctrl and dirpicker change) update the
         # widgets correctly.
-        self.SetStatusText('Updating local files...')
+        #self.SetStatusText('Updating local files...')
         self.local_files.DeleteAllItems()
         # no hiddens (should be an option in settings)
         cdir_path = Path(self.current_local_path).expanduser().glob('*')
@@ -680,7 +681,7 @@ class HPexGUI(wx.Frame):
             self.hp_selection = None
         print('self.hp_selection', self.hp_selection)
         
-        self.SetStatusText('Updating remote variables...')
+        #self.SetStatusText('Updating remote variables...')
         # refresh the path by calling remote directory
         self.kermit_connector = KermitConnector()
             
@@ -788,6 +789,8 @@ class HPexGUI(wx.Frame):
             self.hpvars = []
 
         basename = Path(filename).name
+        self.SetStatusText(f'Transferring {basename} to calculator...')
+
         msg = FileTools.create_local_message(
             filename.expanduser(), basename)
         exists = False
@@ -810,7 +813,8 @@ class HPexGUI(wx.Frame):
         index = int(sel_index)
         print('start_local_transfer, index is', index)
         var = self.hpvars[index]
-        
+
+        self.SetStatusText(f"Transferring '{var.name}' from calculator...")
         msg = f"You have chosen to transfer '{var.name}' from the HP48 at " + StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + '.'
         filestats = f'Size: {var.size}\nType: {var.vtype}\nChecksum: {var.crc}'
 
@@ -825,14 +829,9 @@ class HPexGUI(wx.Frame):
             success_callback=self.refresh_all_files)
         
     def start_remote_command_dialog(self, event=None):
-        # the only way to be connected is to be in Kermit mode,
-        # so we only need to check one variable
-        if self.connected:
-            RemoteCommandDialog(
-                self,
-                StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue()))).go()
-        else:
-            self.SetStatusText('Not connected, so remote commands are unavailable')
+        RemoteCommandDialog(
+            self,
+            StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue()))).go()
 
     def process_kermit_data(self, output):
         # This function takes the output from Kermit, splits by lines
@@ -1077,19 +1076,20 @@ class HPexGUI(wx.Frame):
             # the user can choose to reset the directory to the
             # starting directory (when we connected) on disconnect.
             cmd = ''
-            if HPexSettingsTools.load_settings().reset_directory_on_disconnect:
+            if HPexSettingsTools.load_settings()['reset_directory_on_disconnect']:
                 cmd += f'remote host {self.firstpath} EVAL,'
             self.kermit_dialog = KermitConnectingDialog(
                 self, self.kill_kermit_external,
                 'Finishing...',
-                "Sending 'finish' to calculator...") 
+                "Sending 'finish' to calculator...")
             
             # the event handler will take care of any troubles from
             # this
 
             self.kermit = threading.Thread(
                 target=self.kermit_connector.run,
-                args=(StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
+                #args=(StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
+                args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
                       self,
                       cmd + 'finish',
                       self.topic,

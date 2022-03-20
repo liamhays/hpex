@@ -292,7 +292,7 @@ class FileTools:
         # if there are no empty slots, we'll just return the
         # greatest-numbered port plus one, which is probably what x48
         # will allocate.
-        print(devptys)
+        #print(devptys)
         return str(Path('/dev/pts', str(int(Path(devptys[-1]).name) + 1)))
         
 class StringTools(object):
