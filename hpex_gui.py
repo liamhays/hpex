@@ -895,6 +895,9 @@ class HPexGUI(wx.Frame):
             StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + ' was cancelled.')
 
     def kermit_failed(self, cmd, out):
+        # close this first because otherwise it lingers around confusingly
+        if not self.connected:
+            self.kermit_dialog.Close()
         # If Kermit failed, notify the user, correct various states,
         # and tell them what Kermit said (why it failed).
         print('kermit failed in HPex')
@@ -908,8 +911,7 @@ class HPexGUI(wx.Frame):
             KermitErrorDialog(self, out).Show(True)
             return
 
-        if not self.connected:
-            self.kermit_dialog.Close()
+
 
 
         # Kermit likes to add blank lines and other junk to the
