@@ -769,6 +769,8 @@ class HPexGUI(wx.Frame):
         self.transfer_to_local(sel_index)
                             
     def transfer_to_hp(self, path):
+        if self.empty_port_box_warning():
+            return
         print('start_hp_transfer, path is', path)
         # path is the file to send
         
@@ -879,6 +881,16 @@ class HPexGUI(wx.Frame):
         # auto resize the list in case lengths have changed
         self.hp_files.SetColumnWidth(0, wx.LIST_AUTOSIZE)
 
+    def empty_port_box_warning(self) -> bool:
+        # returns True if box is empty, False otherwise
+        if StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) == '':
+            print('empty serial port box')
+            wx.MessageDialog(self, 'Serial port box is empty! Please input a port to use.',
+                             caption='Serial error',
+                             style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
+            return True
+        return False
+        
     def kermit_cancelled(self, cmd, out):
         # The only time you can cancel Kermit in this class is if you
         # pres 'Cancel' in the connecting dialog. This function mostly
@@ -1048,11 +1060,7 @@ class HPexGUI(wx.Frame):
         if self.xmodem_mode:
             return
         
-        if StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) == '':
-            print('empty serial port box')
-            wx.MessageDialog(self, 'Serial port box is empty!',
-                             caption='Serial error',
-                             style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
+        if self.empty_port_box_warning():
             return
         
         self.kermit_connector = KermitConnector()

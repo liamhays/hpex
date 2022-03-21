@@ -1,44 +1,44 @@
 # hpex
 HPex (pronounced "h-pecks", short for "HP Exchange") is a RPL HP
 calculator to Linux transfer tool with graphical and command line
-interfaces and features found in no other Linux<->HP transfer tool.
+interfaces, plus features found in no other Linux<->HP transfer tool.
 
 ## Why is HPex better?
 Just compare HPex to [HPTalx](http://hptalx.sourceforge.net/), a
-popular application for the same purpose:
+similar popular application:
 
-| Feature            | HPTalx                | HPex                                     |
-|--------------------|-----------------------|------------------------------------------|
-| remote commands    | yes                   | yes                                      |
-| Kermit server      | yes                   | yes                                      |
-| variable checksums | no                    | yes, and header processing               |
-| XModem             | nope                  | send only                                |
-| serial port        | confusing, outdated   | automatic port detection and x48 support |
-| threading          | none, GUI hangs often | complete, GUI never hangs                |
-| interface          | confusing, outdated   | modern, intuitive, and complete CLI      |
+| Feature            | HPTalx                | HPex                                        |
+|--------------------|-----------------------|---------------------------------------------|
+| remote commands    | yes                   | yes                                         |
+| Kermit server      | yes                   | yes                                         |
+| variable checksums | no                    | yes, and header processing                  |
+| XModem             | nope                  | send only                                   |
+| serial port        | confusing, outdated   | automatic port detection with `x48` support |
+| threading          | none, GUI hangs often | complete, GUI never hangs                   |
+| interface          | confusing, outdated   | modern, intuitive, and complete CLI         |
 
-Furthermore, HPex is written in pure Python 3, using wxPython, which
-abstracts GTK3 APIs, and is guaranteed to be up-to-date as new GUI
+HPex is written in pure Python 3 and wxPython, which means that it is
+easily maintained and is look good and function well as new GUI
 libraries emerge. This means that HPex can be maintained and upgraded
 more or less indefinitely.
 
-# System Requirements
+# Installation
 **Important:** Although wxPython is cross-platform, HPex is designed
 to run on Linux. Don't try to use it on another OS.
 
-Also **important:** I don't currently own any of the Meta Kernel
-calculators (the 49G, 49g+, 50g, and 48gII). As a result, consider
-HPex unstable for use with these models. There's more info for the
-curious at the bottom of this document.
+Also **important:** While HPex is currently stable when used with the
+HP 48 series, I don't currently own any of the Meta Kernel calculators
+(the 49G, 49g+, 50g, and 48gII). As a result, consider HPex unstable
+and untested for use with these models. There's more info for the
+curious at the bottom of this document on why this is.
 
 ## Software Requirements
 - Python 3.9 or better
 - C-Kermit 9.0
 
-C-Kermit is readily available in both binary and source forms at
-[Columbia's Kermit
-site](http://www.columbia.edu/kermit/ck90.html#download), and probably
-in your distro's package manager too.
+C-Kermit is readily available in source tarballs at [Columbia's Kermit
+site](http://www.columbia.edu/kermit/ck90.html#download). Your distro
+also probably has binaries in its package manager.
 
 - [wxPython](https://wxpython.org/) 4
 
@@ -51,11 +51,11 @@ option.** For other distros, try looking on the wxPython website:
 (https://wxpython.org/pages/downloads/). Look for a Python wheel file
 for your distro.
 
-If it is no package manager item or Python wheel, try installing via
-with `pip` or by building the source tarball. Note that installing
-with `pip` does not show progress information, while the source
-tarball build does. wxPython is a large codebase and that progress
-info is probably preferable.
+If there is no package manager item or compatible Python wheel, try
+installing with `pip` or by building the source tarball. Note that
+installing with `pip` does not show progress information, but the
+source tarball build does. wxPython is a large codebase and takes some
+time to compile, so that progress info is probably preferable.
 
 The other requirements are:
 
@@ -64,14 +64,13 @@ The other requirements are:
 3. [ptyprocess](https://pypi.org/project/ptyprocess/)
 4. [pyserial](https://pypi.org/project/pyserial/)
 
-These can be installed in one shot with `sudo pip3 install xmodem
-PyPubSub ptyprocess pyserial`.
+These are all small Python modules and can be installed in one shot
+with `sudo pip3 install xmodem PyPubSub ptyprocess pyserial`.
 
 To install HPex itself, make the `hpex.py` file executable, place the
 whole directory in a convenient location, and add that directory to
-your `$PATH`. HPex will run just fine. You can also rename `hpex.py`
-to something else, like just `hpex`, if you prefer. I am looking into
-perhaps making an AppImage distribution.
+your `$PATH`. You can also rename `hpex.py` to something else, like
+just `hpex`.
 
 # Using HPex
 When you start HPex without any arguments on the command line, it
@@ -115,8 +114,8 @@ When you start HPex, it begins a search in `/dev` for potential serial
 ports, following these steps:
 
 1. Look for any device files named `ttyUSB*`, which is Linux's default
-   device name for USB-to-serial adapters. Note that there is no
-   support for [`ttyACM*`
+   device name for USB-to-serial adapters. HPex does not support
+   [`ttyACM*`
    adapters](https://rfc1149.net/blog/2013/03/05/what-is-the-difference-between-devttyusbx-and-devttyacmx/).
    If HPex finds multiple `ttyUSB*` files, it uses the first one in
    alphanumeric order.
@@ -125,24 +124,21 @@ ports, following these steps:
    `/dev/pts/`, the directory that holds pseudoterminal device
    files. `x48`, the excellent HP 48 emulator for Linux, creates
    device files in this directory for its serial ports, as does your
-   terminal emulator (Konsole, `xterm`, and others). Files in this
-   directory are device files named with numbers, and HPex looks for
-   "empty spaces." For example:
-   
-   `/dev/pts/` contains three files: `0`, `1`, and `3`. The empty
-   space is between `1` and `3`. HPex recognizes this, and chooses
-   `/dev/pts/2` as the serial port. This is how `x48` searches for a
-   pty to use.
+   terminal emulator (Konsole, `xterm`, etc.). Files in this directory
+   are device files named with numbers, and HPex looks for "empty
+   spaces." For example, if `/dev/pts/` contains three files: `0`,
+   `1`, and `3`, HPex will find the empty space between `1` and `3`
+   and choose `/dev/pts/2` as the serial port. This
+   is how `x48` searches for a pty to use.
    
    In this example, HPex will say that it found `/dev/pts/2`, and
    instruct you to start `x48`:
    
    ![x48 with /dev/pts/2 as its serial port](manual_photos/x48.png)
    
-   we clearly see that the emulator, sure enough, has chosen
-   `/dev/pts/2` as the Wire serial port. **Important:** Make sure you
-   start `x48` *after* starting HPex, otherwise HPex won't be able to
-   find the empty space.
+   `x48` has, sure enough, chosen `/dev/pts/2` as the Wire serial
+   port. **Important:** Make sure you start `x48` *after* starting
+   HPex, otherwise HPex won't be able to find the empty space.
    
 3. Finally, if no empty spaces are found, HPex will find the highest
    `/dev/pts` port, then add one. For example, if the highest is
@@ -151,28 +147,32 @@ ports, following these steps:
    
 The serial port box is also just a standard entry box, and you can
 type any port you want to use. The Refresh All button will rescan for
-serial ports.
+serial ports, in addition to reloading the contents of each listbox.
 
 ## Transferring files
 To copy a file, simply drag and drop it from one window to
 another. You can also press `Ctrl-S` to send the selected local file,
-and `Ctrl-G` to get the selected remote file. Ctrl-G only works if
+and `Ctrl-G` to get the selected remote file. `Ctrl-G` only works if
 HPex is connected over Kermit. Note that you cannot drag a local
 directory onto the calculator filebox, but you can copy a calculator
 directory onto the computer.
 
-You can send files with Kermit even if you aren't connected to the
-calculator.
+You can also send files with Kermit even if you aren't connected to
+the calculator's Kermit server.
 
 When you drop a file, a small dialog opens:
 
 ![The dialog shown as a file is sent](manual_photos/transfer_window.png)
 
-If the file is a binary HP object, HPex will calculate the size and
-checksum of the object. I need to point out that the code to do this
-is not mine. It is my own Python translation of the C source from the
-program `TASC`, by Jonathan T. Higa, on Joe Horn's Goodies Disk #7. I
-took the checksum-calculating part and converted it to Python. 
+If the file you want to send is a binary HP object, HPex will
+calculate the size and checksum of the object. I need to point out
+that the code to do this is not mine. It is my own Python translation
+of the C source from the program `TASC`, by Jonathan T. Higa, on Joe
+Horn's Goodies Disk #7. I took the checksum-calculating part and
+converted it to Python.
+
+If the file you want to send is an ASCII HP object, HPex will parse
+the `%%HP` header and inform you in the same dialog.
 
 Press Cancel to cancel the file transfer operation. Remember that if
 you're receiving a file from the calculator over Kermit, no progress
@@ -193,9 +193,9 @@ follows:
 - **Baud rate:** this has the four options available on an HP 48, as
   well as 15360 and 115200 for compatibility with the HP 49 and 50.
 - **Parity:** serial port parity, used by both XModem and Kermit.
-- **Kermit file mode:** either Auto, Binary, or ASCII. I leave this in
-  Auto and adjust the calculator to how I want files transferred, as
-  Kermit seems very smart about figuring it out.
+- **Kermit file mode:** either Auto, Binary, or ASCII. I recommend
+  leaving this in Auto and adjusting the calculator to either binary
+  or ASCII.
 - **Kermit checksum mode:** 1, 2, or 3.
 - **Disable pty search, look only for ttyUSB ports:** checking this
   box will prevent HPex from trying to load any ports from
