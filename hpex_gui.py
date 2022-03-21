@@ -1,7 +1,7 @@
 import threading
 
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
-# global TODO (more urgent): fix the statusbar
+# TODO: maybe probe IOPAR on connect to see if calculator is in mode 3---but might be too slow
 from pathlib import Path
 import os
 
@@ -369,7 +369,7 @@ class HPexGUI(wx.Frame):
         # The default Frame size is just too small, so we make it
         # bigger.
         size = self.GetSize()
-        size *= 1.3
+        size *= 1.5
         self.SetSize(size)
 
         

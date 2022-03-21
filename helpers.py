@@ -183,7 +183,7 @@ class FileTools:
             
 
         crc_results = []
-        print('f is', f)
+        #print('f is', f)
         try:
             crc_results = HPCRCCalculator(f).calc()
             crc_results[1] = KermitProcessTools.checksum_to_hexstr(crc_results[1])
@@ -282,18 +282,20 @@ class FileTools:
                         'Using ' + '/dev/pts/' + str(i) +
                         ', assuming x48 mode (start x48 now).')
                     return '/dev/pts/' + str(i)
-                
+
+        # otherwise, use one more than the highest pty
+        pty = Path('/dev/pts', str(int(Path(devptys[-1]).name) + 1))
         # notify them again
         if parent is not None:
             parent.SetStatusText(
-                'Using ' + devptys[-1] +
+                'Using ' + str(pty) +
                 ', assuming x48 mode (start x48 now).')
             
         # if there are no empty slots, we'll just return the
         # greatest-numbered port plus one, which is probably what x48
         # will allocate.
         #print(devptys)
-        return str(Path('/dev/pts', str(int(Path(devptys[-1]).name) + 1)))
+        return str(pty)
         
 class StringTools(object):
     @staticmethod

@@ -13,9 +13,6 @@ from helpers import FileTools, KermitProcessTools, XModemProcessTools
 
 class HPexCLI:
     def __init__(self, args):
-        print('__init__')
-        #print(args)
-#        print(sys.modules.keys())
         # if the file doesn't exist (or is a directory), don't even try.
         self.filename = Path(args.input_file[0])
         if not args.get:
@@ -176,7 +173,6 @@ class HPexCLI:
         # the progress bar stays just one line.
         self.already_wrote_100 = False
 
-        #TODO: WHAT IS THIS
         options = HPexSettingsTools.load_settings()
 
         options['baud_rate'] = self.baud

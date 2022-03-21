@@ -17,14 +17,14 @@ class HPex(object):
             # command line.
             import argparse
             parser = argparse.ArgumentParser(
-                description='Transfer file to calculator, using XModem or Kermit (default Kermit).')
+                description='Transfer file to calculator, using XModem or Kermit (default Kermit). If a serial port is not specified, HPex will try to find one automatically.')
             
             parser.add_argument(
                 'input_file', metavar='FILE',
                 nargs=1, help='File to send or receive')
 
             parser.add_argument(
-                '-p', '--port', help='Serial port to connect to.')
+                '-p', '--port', help='Serial port to connect to')
             
             parser.add_argument(
                 '-b', '--baud',
@@ -37,7 +37,7 @@ class HPex(object):
             parser.add_argument(
                 '-i', '--info',
                 action='store_true',
-                help='Run binary object info check on FILE')
+                help='Run HP object info check on FILE')
             
             parser.add_argument(
                 '-x', '--xmodem',
@@ -47,17 +47,17 @@ class HPex(object):
             parser.add_argument(
                 '-d', '--finish',
                 action='store_true',
-                help='Finish remote server in Kermit mode')
+                help='Finish remote server after transfer in Kermit mode')
 
             parser.add_argument(
                 '-g', '--get',
                 action='store_true',
-                help='Get file (must be single name, no path) from server instead of sending file.')
+                help='Get file (must be single name, no path) from server')
 
             parser.add_argument(
                 '-o', '--overwrite',
                 action='store_true',
-                help='Overwrite file on local side.')
+                help='Overwrite file on local side')
             
             parser.add_argument(
                 '-c', '--cksum',
@@ -69,7 +69,7 @@ class HPex(object):
 
             parser.add_argument(
                 '-a', '--asname',
-                nargs=1, help='Name to send file as in Kermit mode')
+                nargs=1, help='Name to rename file as on calculator, when sending with Kermit')
 
             # hpex_cli is importing wx, because kermit_pubsub,
             # xmodem_pubsub, and settings all rely on wx.

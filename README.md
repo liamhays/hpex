@@ -168,6 +168,12 @@ When you drop a file, a small dialog opens:
 
 ![The dialog shown as a file is sent](manual_photos/transfer_window.png)
 
+If the file is a binary HP object, HPex will calculate the size and
+checksum of the object. I need to point out that the code to do this
+is not mine. It is my own Python translation of the C source from the
+program `TASC`, by Jonathan T. Higa, on Joe Horn's Goodies Disk #7. I
+took the checksum-calculating part and converted it to Python. 
+
 Press Cancel to cancel the file transfer operation. Remember that if
 you're receiving a file from the calculator over Kermit, no progress
 indication is sent to the computer.
