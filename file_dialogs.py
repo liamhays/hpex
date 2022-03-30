@@ -321,24 +321,28 @@ class FileGetDialog(wx.Frame):
         # check for the file in the current local directory, if it
         # exists, ask about overwriting
         ask = HPexSettingsTools.load_settings()['ask_for_overwrite']
-        if varname in os.listdir(self.current_dir) and ask:
-            # just let the user know, so that they know what will
-            # happen
-            self.result = wx.MessageDialog(
-                self,
-                f"'{varname}' already exists in " +
-                str(self.current_dir) +
-                f".\nDo you want to overwrite the existing file?\nIf you don't choose to overwrite, files will become '{varname}.~1~', '{varname}.~2~', etc.",
-                'File already exists',
-                wx.YES_NO | wx.ICON_QUESTION | wx.CANCEL | wx.NO_DEFAULT).ShowModal()
-            if self.result == wx.ID_YES:
-                self.overwrite = True
-            elif self.result == wx.ID_NO:
-                self.overwrite = False
-            # on this one, we actually want to have a cancel option,
-            # because the user could decide to stop the operation
-            elif self.result == wx.ID_CANCEL:
-                self.Destroy()
+        if ask:
+            if varname in os.listdir(self.current_dir):
+                # just let the user know, so that they know what will
+                # happen
+                self.result = wx.MessageDialog(
+                    self,
+                    f"'{varname}' already exists in " +
+                    str(self.current_dir) +
+                    f".\nDo you want to overwrite the existing file?\nIf you choose not to overwrite, files will become '{varname}.~1~', '{varname}.~2~', etc.",
+                    'File already exists',
+                    wx.YES_NO | wx.ICON_QUESTION | wx.CANCEL | wx.NO_DEFAULT).ShowModal()
+                if self.result == wx.ID_YES:
+                    self.overwrite = True
+                elif self.result == wx.ID_NO:
+                    self.overwrite = False
+                # on this one, we actually want to have a cancel option,
+                # because the user could decide to stop the operation
+                elif self.result == wx.ID_CANCEL:
+                    self.Destroy()
+        else:
+            # if asking to overwrite has been disabled, HPex will not overwrite
+            self.overwrite = False
 
         # Don't need to subscribe to kermit.newdata, because there's
         # no data available when receiving

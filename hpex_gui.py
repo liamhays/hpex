@@ -2,6 +2,7 @@ import threading
 
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
 # TODO: maybe probe IOPAR on connect to see if calculator is in mode 3---but might be too slow
+
 from pathlib import Path
 import os
 

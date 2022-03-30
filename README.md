@@ -165,11 +165,11 @@ When you drop a file, a small dialog opens:
 ![The dialog shown as a file is sent](manual_photos/transfer_window.png)
 
 If the file you want to send is a binary HP object, HPex will
-calculate the size and checksum of the object. I need to point out
-that the code to do this is not mine. It is my own Python translation
-of the C source from the program `TASC`, by Jonathan T. Higa, on Joe
-Horn's Goodies Disk #7. I took the checksum-calculating part and
-converted it to Python.
+calculate the size and checksum of the object. The code that
+calculates this is not mine. It is my own Python translation of the C
+source from the program `TASC`, by Jonathan T. Higa, on Joe Horn's
+Goodies Disk #7. I took the checksum-calculating part and converted it
+to Python.
 
 If the file you want to send is an ASCII HP object, HPex will parse
 the `%%HP` header and inform you in the same dialog.
@@ -181,37 +181,40 @@ indication is sent to the computer.
 ## Settings
 ![The Settings window](manual_photos/settings.png)
 
-HPex is quite configurable, and the main way to do this is through the
-Settings dialog, accessible through the File menu. The options are as
-follows:
+HPex is quite configurable, through the Settings dialog, located in
+the File menu. The options are as follows:
 
 - **Startup directory:** the directory HPex will initialize the
   left-hand file list in this directory.
 - **Kermit name:** the name for the Kermit executable. If installed
   from your distro's repository, this is probably `ckermit`, but if
-  you built Kermit from source, it's probably `kermit`.
+  you built Kermit from source, it's probably `kermit`. This
+  executable, whatever it is called, must be in your `$PATH`.
 - **Baud rate:** this has the four options available on an HP 48, as
-  well as 15360 and 115200 for compatibility with the HP 49 and 50.
+  well as 15360 and 115200 for compatibility with the MK series. 
 - **Parity:** serial port parity, used by both XModem and Kermit.
 - **Kermit file mode:** either Auto, Binary, or ASCII. I recommend
   leaving this in Auto and adjusting the calculator to either binary
-  or ASCII.
-- **Kermit checksum mode:** 1, 2, or 3.
+  or ASCII mode, as the computer's Kermit will automatically adapt.
+- **Kermit checksum mode:** 1, 2, or 3. The calculator's default is 3
+  and HPex's default is 3 too.
 - **Disable pty search, look only for ttyUSB ports:** checking this
   box will prevent HPex from trying to load any ports from
   `/dev/pts/`, and look only for `/dev/ttyUSB*` ports. **Important:** If no
   ports are found, the serial port box will be empty and you will have
   to fill in a port yourself.
 - **Disconnect the calculator on close if connected:** this will
-  finish the remote Kermit server if HPex is connected and you decide
-  to close it.
+  finish the remote Kermit server if HPex is connected to it and HPex
+  is closed.
 - **Reset calculator directory on disconnect:** if this box is
   checked, HPex will remember the directory the calculator was set to
-  *when it connected*, and will restore that directory on disconnect.
+  *when HPex connected*, and will restore the calculator's path to
+  that directory on disconnect.
 - **Ask to or warn about overwriting:** this box controls the
-  generation of dialogs that warn you or let you control overwriting
-  of files.
-- **Start HPex in XModem mode:** literally exactly what it sounds like
+  generation of dialogs that warn you about overwriting variables on
+  both the calculator and the computer. If this is unchecked, HPex
+  will never overwrite files already existing on the computer.
+- **Start HPex in XModem mode:** just what it sounds like.
 
 All settings are stored in the file `~/.hpexrc`. This file is not
 human-editable, but it can be backed up and restored like any other
