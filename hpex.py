@@ -71,8 +71,7 @@ class HPex(object):
                 '-a', '--asname',
                 nargs=1, help='Name to rename file as on calculator, when sending with Kermit')
 
-            # hpex_cli is importing wx, because kermit_pubsub,
-            # xmodem_pubsub, and settings all rely on wx.
+
             from hpex_cli import HPexCLI
             #print(sys.modules.keys())
             HPexCLI(parser.parse_args())

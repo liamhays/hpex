@@ -2,8 +2,6 @@ import pickle
 from pathlib import Path
 import os
 
-# TODO: should probably end up being a sequential version number (as
-# opposed to semantic), and an application global of some kind
 current_hpex_version = 1
 
 # Although it is less OO, we use a dict to store settings instead of a

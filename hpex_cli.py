@@ -11,6 +11,8 @@ from kermit_pubsub import KermitConnector
 from xmodem_pubsub import XModemConnector
 from helpers import FileTools, KermitProcessTools, XModemProcessTools
 
+# TODO: what if multiple files are passed on the command line? Right now it just errors out.
+# TODO: progress bar should probably find terminal columns every loop
 class HPexCLI:
     def __init__(self, args):
         # if the file doesn't exist (or is a directory), don't even try.
