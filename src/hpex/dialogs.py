@@ -1,11 +1,14 @@
 import threading
 import os
+import platform
+
+_system = platform.system()
 
 import wx
-
 from pubsub import pub
 
-from hpex.kermit_pubsub import KermitConnector
+if _system != 'Windows':
+    from hpex.kermit_pubsub import KermitConnector
 #from xmodem_pubsub import XModemConnector
 from hpex.helpers import FileTools, KermitProcessTools
 
@@ -127,6 +130,10 @@ class XModemErrorDialog(wx.Frame):
 class ObjectInfoDialog(wx.Frame):
     def __init__(self, parent, initdir):
         wx.Frame.__init__(self, parent, title='HP48 Object Info')
+        # Default Windows background color is weird grey (this code is
+        # in other Frames as well)
+        if _system == 'Windows':
+            self.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_MENU))
         self.initdir = initdir
         
     def go(self, event=None):

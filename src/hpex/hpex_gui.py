@@ -220,9 +220,14 @@ class HPexGUI(wx.Frame):
         self.local_updir.Bind(wx.EVT_BUTTON, self.local_move_up)
 
 
-        self.local_files = wx.ListCtrl(
-            self.filebox_panel, wx.ID_ANY,
-            style=wx.LC_REPORT | wx.LC_ICON | wx.LC_ALIGN_LEFT | wx.LC_SINGLE_SEL)
+        if _system == 'Windows':
+            self.local_files = wx.ListCtrl(
+                self.filebox_panel, wx.ID_ANY,
+                style=wx.LC_REPORT)# | wx.LC_ICON | wx.LC_ALIGN_LEFT | wx.LC_SINGLE_SEL)
+        else:
+            self.local_files = wx.ListCtrl(
+                self.filebox_panel, wx.ID_ANY,
+                style=wx.LC_REPORT | wx.LC_ICON | wx.LC_ALIGN_LEFT | wx.LC_SINGLE_SEL)
 
         self.local_files.InsertColumn(0, 'Name')
         
@@ -356,19 +361,25 @@ class HPexGUI(wx.Frame):
 
         self.disable_on_disconnect()
         if _system == 'Windows':
-            # XModem only on Windows
-            xmodem = True
-        else:
-            xmodem = HPexSettingsTools.load_settings()['start_in_xmodem']
-        xmodem = True
-        if xmodem:
+            # XModem only, for Windows
+
             self.set_xmodem_ui_layout(event=None)
             # select the XModem radiobutton and disable mode change box
             self.xmodem_radiobutton.SetValue(True)
             self.kermit_radiobutton.Disable()
             self.xmodem_radiobutton.Disable()
+            self.hp_dir_label.SetLabelText('Kermit not available on Windows')
         else:
-            self.set_kermit_ui_layout(event=None)
+            # otherwise load setting and follow that
+            xmodem = HPexSettingsTools.load_settings()['start_in_xmodem']
+            if xmodem:
+                self.set_xmodem_ui_layout(event=None)
+                # select the XModem radiobutton and disable mode change box
+                self.xmodem_radiobutton.SetValue(True)
+            else:
+                self.set_kermit_ui_layout(event=None)
+            
+
 
 
         #self.hp_home_button.Disable()
@@ -534,7 +545,7 @@ class HPexGUI(wx.Frame):
             # forward matches the text in hp_dir_label
             self.connect_button.Disable()
             self.run_hp_command_item.Enable(False)
-
+            self.get_menuitem.Enable(False)
             
     def set_kermit_ui_layout(self, event):
         self.xmodem_mode = False

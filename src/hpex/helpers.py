@@ -241,26 +241,30 @@ class FileTools:
 
 
         if _system == 'Windows':
+            if parent != None:
+                parent.SetStatusText('Searching for COM ports...')
             # get COM ports
             for p in serial.tools.list_ports.comports():
                 # All USB fields will be defined (not None) if the port is USB
                 if p.vid != None: # USB Vendor ID
+                    if parent != None:
+                        parent.SetStatusText('Using ' + p.device)
                     return p.device
             return '' # nothing found
         
         # we can pass None in for the parent and it won't try to
         # update the statustext
-        if parent is not None:
+        if parent != None:
             parent.SetStatusText('Searching for ttyUSB ports...')
         usbttys = glob.glob('/dev/ttyUSB*')
     
         # we can check for a variable's contents as boolean
         if usbttys != []:
-            if parent is not None:
+            if parent != None:
                 parent.SetStatusText('Using ' + usbttys[-1])
             return usbttys[-1]
         
-        if parent is not None:
+        if parent != None:
             parent.SetStatusText(
                 'No ttyUSB ports found, serial port box empty.')
 
@@ -275,7 +279,7 @@ class FileTools:
         
         # no ttyUSBs found? notify the user, though they won't see
         # this message unless there's no numbered ptys.
-        if parent is not None:
+        if parent != None:
             parent.SetStatusText(
                 'No ttyUSB ports found...searching for x48 (ptys).')
         # I think that x48 will try to find the lowest pty that is
@@ -289,7 +293,7 @@ class FileTools:
 
         for i in range(len(devpty_numbers)):
             if i not in devpty_numbers:
-                if parent is not None:
+                if parent != None:
                     parent.SetStatusText(
                         'Using ' + '/dev/pts/' + str(i) +
                         ', assuming x48 mode (start x48 now).')
@@ -298,7 +302,7 @@ class FileTools:
         # otherwise, use one more than the highest pty
         pty = Path('/dev/pts', str(int(Path(devptys[-1]).name) + 1))
         # notify them again
-        if parent is not None:
+        if parent != None:
             parent.SetStatusText(
                 'Using ' + str(pty) +
                 ', assuming x48 mode (start x48 now).')
