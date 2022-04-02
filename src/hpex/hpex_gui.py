@@ -1,5 +1,6 @@
 import threading
-
+import platform
+_system = platform.system()
 # global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
 # TODO: maybe probe IOPAR on connect to see if calculator is in mode 3---but might be too slow
 
@@ -12,7 +13,9 @@ from pubsub import pub
 from hpex.helpers import FileTools, KermitProcessTools, StringTools
 from hpex.file_dialogs import FileGetDialog, FileSendDialog
 from hpex.dialogs import KermitConnectingDialog, RemoteCommandDialog, KermitErrorDialog, ObjectInfoDialog
-from hpex.kermit_pubsub import KermitConnector
+
+if _system != 'Windows':
+    from hpex.kermit_pubsub import KermitConnector
 from hpex.settings import HPexSettingsTools
 from hpex.settings_frame import SettingsFrame
 from hpex.kermit_variable import KermitVariable
@@ -352,13 +355,18 @@ class HPexGUI(wx.Frame):
         self.new_remote_path = False
 
         self.disable_on_disconnect()
-
-        xmodem = HPexSettingsTools.load_settings()['start_in_xmodem']
+        if _system == 'Windows':
+            # XModem only on Windows
+            xmodem = True
+        else:
+            xmodem = HPexSettingsTools.load_settings()['start_in_xmodem']
+        xmodem = True
         if xmodem:
             self.set_xmodem_ui_layout(event=None)
-            # select the XModem radiobutton
+            # select the XModem radiobutton and disable mode change box
             self.xmodem_radiobutton.SetValue(True)
-            
+            self.kermit_radiobutton.Disable()
+            self.xmodem_radiobutton.Disable()
         else:
             self.set_kermit_ui_layout(event=None)
 

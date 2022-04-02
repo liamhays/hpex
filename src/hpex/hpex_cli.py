@@ -2,11 +2,14 @@ import threading
 import sys
 import shutil
 from pathlib import Path
+import platform
 
+_system = platform.system()
 from pubsub import pub
 
 from hpex.settings import HPexSettingsTools
-from hpex.kermit_pubsub import KermitConnector
+if _system != 'Windows':
+    from hpex.kermit_pubsub import KermitConnector
 from hpex.xmodem_pubsub import XModemConnector
 from hpex.helpers import FileTools, KermitProcessTools, XModemProcessTools
 

@@ -1,8 +1,14 @@
 import glob
 import os
+import platform
+
+_system = platform.system()
 
 import re
 from pathlib import Path
+
+if _system == 'Windows':
+    import serial.tools.list_ports
 
 from hpex.crc_calculator import HPCRCCalculator, HPCRCException
 from hpex.settings import HPexSettingsTools
@@ -219,22 +225,28 @@ class FileTools:
 
         return message
 
-    
-    # This function isn't perfect---it both returns things and
-    # modifies parent in place. However, it works, and separates this
-    # function from the main class.
+
+
+
     @staticmethod
     def get_serial_ports(parent):
-        """This function tries to find ttyUSB serial ports (it returns the
-        first sorted if any are found), and if it finds none, it then
-        looks for any empty port slot in /dev/pts. This way, you can
-        use x48 or your actual calculator, and change ports or scan
-        for new ones at will.
+        """On Linux, this function tries to find ttyUSB serial ports (it
+        returns the first sorted if any are found), and if it finds
+        none, it then looks for any empty port slot in /dev/pts. This
+        way, you can use x48 or your actual calculator, and change
+        ports or scan for new ones at will.
 
+        On Windows, it simply returns the first USB COM port found.
         """
 
-        # debug stuff
-        #return '/dev/pts/2'
+
+        if _system == 'Windows':
+            # get COM ports
+            for p in serial.tools.list_ports.comports():
+                # All USB fields will be defined (not None) if the port is USB
+                if p.vid != None: # USB Vendor ID
+                    return p.device
+            return '' # nothing found
         
         # we can pass None in for the parent and it won't try to
         # update the statustext
