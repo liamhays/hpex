@@ -5,9 +5,9 @@ import wx
 
 from pubsub import pub
 
-from kermit_pubsub import KermitConnector
+from hpex.kermit_pubsub import KermitConnector
 #from xmodem_pubsub import XModemConnector
-from helpers import FileTools, KermitProcessTools
+from hpex.helpers import FileTools, KermitProcessTools
 
 
 

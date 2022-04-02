@@ -9,13 +9,13 @@ import os
 import wx
 from pubsub import pub
 
-from helpers import FileTools, KermitProcessTools, StringTools
-from file_dialogs import FileGetDialog, FileSendDialog
-from dialogs import KermitConnectingDialog, RemoteCommandDialog, KermitErrorDialog, ObjectInfoDialog
-from kermit_pubsub import KermitConnector
-from settings import HPexSettingsTools
-from settings_frame import SettingsFrame
-from kermit_variable import KermitVariable
+from hpex.helpers import FileTools, KermitProcessTools, StringTools
+from hpex.file_dialogs import FileGetDialog, FileSendDialog
+from hpex.dialogs import KermitConnectingDialog, RemoteCommandDialog, KermitErrorDialog, ObjectInfoDialog
+from hpex.kermit_pubsub import KermitConnector
+from hpex.settings import HPexSettingsTools
+from hpex.settings_frame import SettingsFrame
+from hpex.kermit_variable import KermitVariable
 
 # These have to spawn a progress window and start the file transfer
 class HPTextDropTarget(wx.TextDropTarget):

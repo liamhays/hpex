@@ -4,8 +4,8 @@ import os
 import re
 from pathlib import Path
 
-from crc_calculator import HPCRCCalculator, HPCRCException
-from settings import HPexSettingsTools
+from hpex.crc_calculator import HPCRCCalculator, HPCRCException
+from hpex.settings import HPexSettingsTools
 
 class KermitProcessTools:
     """

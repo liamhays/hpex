@@ -72,7 +72,7 @@ class HPex(object):
                 nargs=1, help='Name to rename file as on calculator, when sending with Kermit')
 
 
-            from hpex_cli import HPexCLI
+            from hpex.hpex_cli import HPexCLI
             #print(sys.modules.keys())
             HPexCLI(parser.parse_args())
 
@@ -80,7 +80,7 @@ class HPex(object):
             # otherwise, do GUI
             import wx
             app = wx.App(False)
-            from hpex_gui import HPexGUI
+            from hpex.hpex_gui import HPexGUI
             HPexGUI(None)
             app.MainLoop()
 

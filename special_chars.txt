@@ -1,0 +1,4 @@
+So the translation goes both ways. Evaluating "remote host 'H\\GS'"
+puts 'HΣ' on the stack. I wonder if perhaps we have to stop the HP
+server, send the variable, and start the server again unless the
+server is able to process the variable name from the escape character.

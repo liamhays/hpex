@@ -1,5 +1,5 @@
 import wx
-from settings import * 
+from hpex.settings import * 
 
 # This class has to be seperate so that we can control the loading of
 # wx in the CLI.

@@ -4,13 +4,13 @@ import pathlib
 
 import wx
 from pubsub import pub
-from kermit_pubsub import KermitConnector
-from xmodem_pubsub import XModemConnector
 
-from dialogs import KermitErrorDialog, XModemErrorDialog
-from helpers import KermitProcessTools, XModemProcessTools
-from settings import HPexSettingsTools
-from kermit_variable import KermitVariable
+from hpex.kermit_pubsub import KermitConnector
+from hpex.xmodem_pubsub import XModemConnector
+from hpex.dialogs import KermitErrorDialog, XModemErrorDialog
+from hpex.helpers import KermitProcessTools, XModemProcessTools
+from hpex.settings import HPexSettingsTools
+from hpex.kermit_variable import KermitVariable
 
 # Because the GUI is drag and drop-based, the transfer dialogs start a
 # transfer on initialization.

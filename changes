@@ -1,0 +1,5 @@
+- Drag and drop interface
+- numerous bugfixes
+- xmodem on startup
+- no whitespace in serial port box
+- new dictionary settings means that HPex can magically migrate settings between versions

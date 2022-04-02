@@ -17,11 +17,6 @@ similar popular application:
 | threading          | none, GUI hangs often | complete, GUI never hangs                   |
 | interface          | confusing, outdated   | modern, intuitive, and complete CLI         |
 
-HPex is written in pure Python 3 and wxPython, which means that it is
-easily maintained and is look good and function well as new GUI
-libraries emerge. This means that HPex can be maintained and upgraded
-more or less indefinitely.
-
 # Installation
 **Important:** Although wxPython is cross-platform, HPex is designed
 to run on Linux. Don't try to use it on another OS.

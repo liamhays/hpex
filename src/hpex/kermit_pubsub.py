@@ -3,7 +3,7 @@ import signal
 from pubsub import pub
 import ptyprocess
 
-from settings import HPexSettingsTools
+from hpex.settings import HPexSettingsTools
 
 # Kermit, even with set quiet on, will still let stale lock warnings
 # through. Therefore, we still have to filter it.

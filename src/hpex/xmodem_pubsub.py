@@ -6,7 +6,7 @@ from pubsub import pub
 
 import serial
 
-from settings import HPexSettingsTools
+from hpex.settings import HPexSettingsTools
 
 class XModemConnector:
     def getc(self, size, timeout=.1):
