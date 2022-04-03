@@ -123,7 +123,7 @@ class FileTools:
         try:
             # open() can't handle the binary contents of a binary
             # object, so if this fails, it means the file isn't ASCII.
-            #print('f', f)
+
             with open(f, 'r') as content:
                 h = re.compile(
                     '%%HP: *T\([0123]\)A\([DRG]\)F\([.,]+\);')
@@ -131,7 +131,7 @@ class FileTools:
                 
                 if match:
                     l = match.group()
-                    print('got match, line is:', l)
+                    #print('got match, line is:', l)
                     translate_mode = l.split('T(')[1]
                     angle_mode = l.split('A(')[1]
                     fraction_mode = l.split('F(')[1]

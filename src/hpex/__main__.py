@@ -1,5 +1,7 @@
-#!/usr/bin/env python3
 import sys
+import platform
+
+_system = platform.system()
 
 class HPex(object):
     # This is the main dispatcher class for all of HPex's
@@ -8,7 +10,6 @@ class HPex(object):
     # calls HPexGUI and runs from there.
     def __init__(self):
         if len(sys.argv) > 1:
-#            print(sys.modules.keys())
             # user passed command-line arguments, figure out what they
             # are
 
@@ -16,8 +17,13 @@ class HPex(object):
             # want to make this as fast as possible to start from the
             # command line.
             import argparse
+            # no Kermit on Windows, so string varies depending on OS
+            if _system == 'Windows':
+                desc = 'Transfer file to calculator using XModem. If a serial port is not specified, HPex will try to find one automatically.'
+            else:
+                desc = 'Transfer file to calculator, using XModem or Kermit (default Kermit). If a serial port is not specified, HPex will try to find one automatically.'
             parser = argparse.ArgumentParser(
-                description='Transfer file to calculator, using XModem or Kermit (default Kermit). If a serial port is not specified, HPex will try to find one automatically.')
+                description=desc)
             
             parser.add_argument(
                 'input_file', metavar='FILE',
@@ -37,41 +43,41 @@ class HPex(object):
             parser.add_argument(
                 '-i', '--info',
                 action='store_true',
-                help='Run HP object info check on FILE')
-            
-            parser.add_argument(
-                '-x', '--xmodem',
-                action='store_true',
-                help="Use XModem instead of Kermit, only available for sending files")
+                help='Run HP object info check on FILE instead of sending it')
 
-            parser.add_argument(
-                '-d', '--finish',
-                action='store_true',
+            if _system != 'Windows':
+                parser.add_argument(
+                    '-x', '--xmodem',
+                    action='store_true',
+                    help="Use XModem instead of Kermit, only available for sending files")
+
+                parser.add_argument(
+                    '-d', '--finish',
+                    action='store_true',
                 help='Finish remote server after transfer in Kermit mode')
 
-            parser.add_argument(
-                '-g', '--get',
-                action='store_true',
-                help='Get file (must be single name, no path) from server')
+                parser.add_argument(
+                    '-g', '--get',
+                    action='store_true',
+                    help='Get file (must be single name, no path) from server')
+                
+                parser.add_argument(
+                    '-c', '--cksum',
+                    help='Kermit block check: one of 1, 2, or 3 (default); applicable only in Kermit mode')
 
-            parser.add_argument(
-                '-o', '--overwrite',
-                action='store_true',
-                help='Overwrite file on local side')
+                parser.add_argument(
+                    '-f', '--filemode',
+                    help="Kermit file mode: one of 'auto', 'binary', or 'ascii'")
+                
+                parser.add_argument(
+                    '-a', '--asname',
+                    nargs=1, help='Name to rename file as on calculator, when sending with Kermit')
+
+                parser.add_argument(
+                    '-o', '--overwrite',
+                    action='store_true',
+                    help='Overwrite file on local side')
             
-            parser.add_argument(
-                '-c', '--cksum',
-                help='Kermit block check: one of 1, 2, or 3 (default); applicable only in Kermit mode')
-
-            parser.add_argument(
-                '-f', '--filemode',
-                help="Kermit file mode: one of 'auto', 'binary', or 'ascii'")
-
-            parser.add_argument(
-                '-a', '--asname',
-                nargs=1, help='Name to rename file as on calculator, when sending with Kermit')
-
-
             from hpex.hpex_cli import HPexCLI
             #print(sys.modules.keys())
             HPexCLI(parser.parse_args())
@@ -84,7 +90,11 @@ class HPex(object):
             HPexGUI(None)
             app.MainLoop()
 
-            
 
-if __name__ == '__main__':
+def run_as_main():
     HPex()
+
+# No __name__ == '__main__' component makes this not work with 'python
+# -m hpex', which is what we prefer anyway.
+    
+

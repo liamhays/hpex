@@ -200,7 +200,6 @@ class HPCRCCalculator:
             
             byte = f.read(1)
 
-        print(self.object_file)
         # must be a list to get edited later
         return [romrev.decode(sys.stdout.encoding),
                 #    we add in the 4.5 + len(name) bytes

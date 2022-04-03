@@ -1,5 +1,5 @@
 import platform
-_system = 'Windows'#platform.system()
+_system = platform.system()
 
 import wx
 from hpex.settings import * 

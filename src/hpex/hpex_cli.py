@@ -20,12 +20,13 @@ class HPexCLI:
     def __init__(self, args):
         # if the file doesn't exist (or is a directory), don't even try.
         self.filename = Path(args.input_file[0])
-        if not args.get:
-            if self.filename.is_dir():
-                print("Error: specified file is directory, which can't be sent.")
-                sys.exit(1)
-            elif not self.filename.is_file():
-                print(f'Error: no such file: {self.filename}')
+        if _system != 'Windows':
+            if not args.get:
+                if self.filename.is_dir():
+                    print("Error: specified file is directory, which can't be sent.")
+                elif not self.filename.is_file():
+                    print(f'Error: no such file: {self.filename}')
+                    
                 sys.exit(1)
         self.topic = 'HPexCLI'
 
@@ -59,11 +60,12 @@ class HPexCLI:
         pub.subscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
 
         self.settings = HPexSettingsTools.load_settings()
-        
-        if args.finish:
-            self.finish = True
-        else:
-            self.finish = False
+
+        if _system != 'Windows':
+            if args.finish:
+                self.finish = True
+            else:
+                self.finish = False
         #print(args.finish)
             
         if args.port:
@@ -86,15 +88,18 @@ class HPexCLI:
         else:
             # load the port specified in the settings
             self.baud = self.settings['baud_rate']
-            
-        if args.xmodem:
-            # self.protocol is the one that gets displayed to the user
+
+        if _system == 'Windows':
             self.protocol = 'XModem'
         else:
-            self.protocol = 'Kermit'
+            if args.xmodem:
+                # self.protocol is the one that gets displayed to the user
+                self.protocol = 'XModem'
+            else:
+                self.protocol = 'Kermit'
 
-
-        self.get = args.get
+        if _system != 'Windows':
+            self.get = args.get
         
         if args.parity:
             if args.parity == '0':
@@ -114,63 +119,68 @@ class HPexCLI:
         else:
             self.parity = self.settings['parity']
 
-        #print(self.parity)
-        if args.cksum:
-            if args.cksum not in ('1', '2', '3'):
-                print(f"Error: Kermit block check value '{args.cksum}' is not of 1, 2, or 3. Please use a valid value.")
-                sys.exit(1)
+        if _system != 'Windows':
+            if args.cksum:
+                if args.cksum not in ('1', '2', '3'):
+                    print(f"Error: Kermit block check value '{args.cksum}' is not of 1, 2, or 3. Please use a valid value.")
+                    sys.exit(1)
                 
-            self.cksum = args.cksum
-        else:
-            self.cksum = self.settings['kermit_cksum']
-
-        if args.filemode:
-            if args.filemode == 'auto':
-                self.file_mode = 'Auto'
-            elif args.filemode == 'binary':
-                self.file_mode = 'Binary'
-            elif args.filemode == 'ascii':
-                self.file_mode = 'ASCII'
+                    self.cksum = args.cksum
             else:
-                print(f"Error: Kermit file mode '{args.filemode}' not valid. Please use a valid option.")
-                sys.exit(1)
-        else:
-            self.file_mode = self.settings['file_mode']
+                self.cksum = self.settings['kermit_cksum']
 
-        if args.asname:
-            self.asname = args.asname[0]
-        else:
-            self.asname = None
-        self.filename = args.input_file[0]
+        if _system != 'Windows':
+            if args.filemode:
+                if args.filemode == 'auto':
+                    self.file_mode = 'Auto'
+                elif args.filemode == 'binary':
+                    self.file_mode = 'Binary'
+                elif args.filemode == 'ascii':
+                    self.file_mode = 'ASCII'
+                else:
+                    print(f"Error: Kermit file mode '{args.filemode}' not valid. Please use a valid option.")
+                    sys.exit(1)
+            else:
+                self.file_mode = self.settings['file_mode']
 
-        # the user can specify a Kermit block check value in XModem
-        # mode, but we should warn them that it won't do anything
+            if args.asname:
+                self.asname = args.asname[0]
+            else:
+                self.asname = None
+            self.filename = args.input_file[0]
 
-        # we check using args.cksum because I think (though I don't
-        # really know) it will be more reliable than checking
-        # self.cksum.
-        if args.cksum and self.protocol == 'XModem':
-            print(f"Warning: ignoring custom Kermit block check '{args.cksum}' specified in XModem mode.")
 
-        # the same applies to -d in XModem mode
-        if self.finish and self.protocol == 'XModem':
-            print("Warning: ignoring option '-d' (finish remote server) specified in XModem mode.")
-
-        if self.get and self.protocol == 'XModem':
-            # we make self.get False here so that the message printed
-            # later is accurate
-            self.get = False
-            print("Warning: ignoring option '-g' (get file) specified in XModem mode.")
-
-        if args.overwrite and self.protocol == 'XModem':
-            print("Warning: ignoring option '-o' (overwrite on local side) specified in XModem mode.")
+        if _system != 'Windows':
+            # the user can specify a Kermit block check value in XModem
+            # mode, but we should warn them that it won't do anything
             
-        # ...and, we do the same for Kermit file mode in XModem mode.
-        if args.filemode and self.protocol == 'XModem':
-            print("Warning: ignoring Kermit file mode '{args.filemode}' specified in XModem mode.")
-            # print an extra newline to separate the warnings from the
-            # other info
-            print()
+            # we check using args.cksum because I think (though I don't
+            # really know) it will be more reliable than checking
+            # self.cksum.
+            if args.cksum and self.protocol == 'XModem':
+                print(f"Warning: ignoring custom Kermit block check '{args.cksum}' specified in XModem mode.")
+                
+            # the same applies to -d in XModem mode
+            if self.finish and self.protocol == 'XModem':
+                print("Warning: ignoring option '-d' (finish remote server) specified in XModem mode.")
+
+            if self.get and self.protocol == 'XModem':
+                # we make self.get False here so that the message printed
+                # later is accurate
+                self.get = False
+                print("Warning: ignoring option '-g' (get file) specified in XModem mode.")
+
+            # ...and, we do the same for Kermit file mode in XModem mode.
+            if args.filemode and self.protocol == 'XModem':
+                print("Warning: ignoring Kermit file mode '{args.filemode}' specified in XModem mode.")
+                # print an extra newline to separate the warnings from the
+                # other info
+                print()
+            
+            if args.overwrite and self.protocol == 'XModem':
+                print("Warning: ignoring option '-o' (overwrite on local side) specified in XModem mode.")
+            
+
 
 
         # this keeps track of whether we've already printed 100% to
@@ -182,20 +192,21 @@ class HPexCLI:
 
         options['baud_rate'] = self.baud
         options['parity'] = self.parity
-        options['file_mode'] = self.file_mode
-        options['kermit_cksum'] = self.cksum
+        if _system != 'Windows':
+            options['file_mode'] = self.file_mode
+            options['kermit_cksum'] = self.cksum
 
-        if not self.get:
-            print(f"Starting transfer of '{self.filename}' to {self.port} using {self.protocol}...")
+            if not self.get:
+                print(f"Starting transfer of '{self.filename}' to {self.port} using {self.protocol}...")
 
-        else:
-            if args.overwrite:
-                print(f"Starting transfer of and overwriting '{self.filename}' from '{self.port}' over {self.protocol}... (no progress available)")
             else:
-                print(f"Starting transfer of '{self.filename}' from '{self.port}' over {self.protocol}... (no progress available)")
+                if args.overwrite:
+                    print(f"Starting transfer of and overwriting '{self.filename}' from '{self.port}' over {self.protocol}... (no progress available)")
+                else:
+                    print(f"Starting transfer of '{self.filename}' from '{self.port}' over {self.protocol}... (no progress available)")
             
         if self.protocol == 'Kermit':
-            # print the warning we show in File*Dialog
+            # print the warning we show in File[Get|Send]Dialog
             print('If you cancel with ^C, you may have to press [CANCEL] or [ATTN] on the calculator.')
             cmd = ''
             if not self.get:

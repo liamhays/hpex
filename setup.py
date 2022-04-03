@@ -8,7 +8,7 @@ setuptools.setup(
     version="1.0.0",
     author="Liam Hays",
     author_email="liamrhays@gmail.com",
-    description="HP 48 to Linux transfer tool",
+    description="HP RPL calculator to Linux transfer tool",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/liamhays/hpex",
@@ -36,10 +36,14 @@ setuptools.setup(
     # and instantiate that object.
     entry_points={
         'console_scripts': [
-            'hpex=hpex.__main__:HPex'
+            # Trying to directly instantiate the object works, but it
+            # causes '<hpex.__main__.HPex object at 0x7fbe25b0f940>'
+            # or something similar to printed out at exit *every time*.
+            # Using this dedicated function fixes that.
+            'hpex=hpex.__main__:run_as_main'#HPex'
         ]
     }, 
-    packages=['hpex'], 
+    packages=['hpex'],
     package_dir={"": "src"},
     python_requires=">=3.9",
     install_requires=[
