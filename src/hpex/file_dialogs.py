@@ -14,7 +14,7 @@ from hpex.xmodem_pubsub import XModemConnector
 from hpex.dialogs import KermitErrorDialog, XModemErrorDialog
 from hpex.helpers import KermitProcessTools, XModemProcessTools
 from hpex.settings import HPexSettingsTools
-from hpex.kermit_variable import KermitVariable
+from hpex.hp_variable import HPVariable
 
 # Because the GUI is drag and drop-based, the transfer dialogs start a
 # transfer on initialization.
@@ -192,6 +192,10 @@ class FileSendDialog(wx.Frame):
             f"Successfully transferred '{self.basename}' to calculator.")
         # xmodem worked, clear stuff up
         self.reset_progress(' Done!')
+        # now that it finished, trigger a refresh on the calculator
+        if callable(self.success_callback):
+            self.success_callback.__call__()
+            
         self.on_close(event=None)
         
     def xmodem_cancelled(self, file_count):
@@ -259,14 +263,20 @@ class FileSendDialog(wx.Frame):
 
         else:
             self.xmodem_connector = XModemConnector()
-            self.xmodem = threading.Thread(
-                target=self.xmodem_connector.run,
-                args=(self.port, self,
-                      self.filename, self.topic))
-
-            self.xmodem.start()
-
-            self.reset_progress(' Run XRECV now.')
+            if self.parent.connected:
+                # send using 'P' command to XModem server
+                self.xmodem = threading.Thread(
+                    target=self.xmodem_connector.run,
+                    args=(self.port,
+                          self,
+                          self.filename,
+                          'send_connect',
+                          True, # short timeout because parent is connected
+                          self.topic))
+                
+                self.xmodem.start()
+                
+                self.reset_progress(' Run XRECV now.')
 
         self.cancel_button.Enable()
         
@@ -308,6 +318,7 @@ class FileGetDialog(wx.Frame):
     def __init__(self, parent, message,
                  file_message, port, varname,
                  current_dir, # this needs to be here because we 'cd' in Kermit
+                 use_xmodem, 
                  success_callback=None):
         
         wx.Frame.__init__(self, parent, title=f'Get {varname}')
@@ -316,6 +327,7 @@ class FileGetDialog(wx.Frame):
         self.varname = varname
         self.parent = parent
         self.current_dir = current_dir
+        self.use_xmodem = use_xmodem
         self.success_callback = success_callback
 
         self.topic = 'FileGetDialog'

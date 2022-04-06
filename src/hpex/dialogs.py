@@ -14,7 +14,7 @@ from hpex.helpers import FileTools, KermitProcessTools
 
 
 
-class KermitConnectingDialog(wx.Frame):
+class ConnectingDialog(wx.Frame):
     def __init__(self, parent, callback, message, title):
         wx.Frame.__init__(self, parent, title=title)
         self.connecting_dialog_sizer = wx.BoxSizer(wx.VERTICAL)

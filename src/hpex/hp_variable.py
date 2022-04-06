@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class KermitVariable:
+class HPVariable:
     name: str
     size: str
     vtype: str

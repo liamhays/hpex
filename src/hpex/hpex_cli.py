@@ -13,9 +13,6 @@ if _system != 'Windows':
 from hpex.xmodem_pubsub import XModemConnector
 from hpex.helpers import FileTools, KermitProcessTools, XModemProcessTools
 
-# TODO: what if multiple files are passed on the command line? Right now it just errors out.
-# TODO: progress bar should probably find terminal columns every loop
-# TODO: mutually exclusive arguments, might make argument warnings obsolete
 class HPexCLI:
     def __init__(self, args):
         # if the file doesn't exist (or is a directory), don't even try.
@@ -24,10 +21,11 @@ class HPexCLI:
             if not args.get:
                 if self.filename.is_dir():
                     print("Error: specified file is directory, which can't be sent.")
+                    sys.exit(1)
                 elif not self.filename.is_file():
                     print(f'Error: no such file: {self.filename}')
-                    
-                sys.exit(1)
+                    sys.exit(1)
+
         self.topic = 'HPexCLI'
 
         # something similar goes for info mode: just stop processing
@@ -68,19 +66,7 @@ class HPexCLI:
                 self.finish = False
         #print(args.finish)
             
-        if args.port:
-            #print('port:', args.port)
-            self.port = args.port
-        else:
-            # otherwise, find the port ourselves.
-            self.port = FileTools.get_serial_ports(None)
-            # no port found, normally from disabling a pty search
-            if self.port == '':
-                print("Error: could not autodiscover serial port. Enable pty searching in the GUI (if disabled) or specify a port with '-p'.")
-                sys.exit(1)
-            print(f'Using autodiscovered port {self.port}.')
-            # separate port declaration from other messages
-            print()
+
 
         if args.baud:
             #print('baud:', args.baud)
@@ -182,7 +168,21 @@ class HPexCLI:
             
 
 
-
+        if args.port:
+            #print('port:', args.port)
+            self.port = args.port
+        else:
+            # otherwise, find the port ourselves.
+            self.port = FileTools.get_serial_ports(None)
+            # no port found, normally from disabling a pty search
+            if self.port == '':
+                print("Error: could not autodiscover serial port. Enable pty searching in the GUI (if disabled) or specify a port with '-p'.")
+                sys.exit(1)
+            print(f'Using autodiscovered port {self.port}.', end='')
+            if self.protocol == 'XModem':
+                print(' Run XRECV now.')
+            # separate port declaration from other messages
+            print()
         # this keeps track of whether we've already printed 100% to
         # the progress bar. if we have, we don't do it again, so that
         # the progress bar stays just one line.
@@ -296,6 +296,8 @@ class HPexCLI:
     # specific needs
     
     def print_progress_bar(self, iteration):
+        # refetch the terminal size in case it's resized
+        self.termcols = shutil.get_terminal_size()[0]
         total = 100
         prefix = 'Progress:'
         suffix = 'complete'
