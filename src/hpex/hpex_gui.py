@@ -981,8 +981,11 @@ class HPexGUI(wx.Frame):
             wx.MessageDialog(self, 'Unable to disconnect from XModem server.',
                              caption='XModem error',
                              style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
-
-
+            # the connecting dialog is only shown on connect and
+            # disconnect, so by handling it only in those commands, we
+            # can prevent the 'object has been deleted' error.
+            self.connecting_dialog.Close()
+            
         elif cmd == 'connect':
             self.SetStatusText("Couldn't connect to XModem server on " +
                                StringTools.trim_serial_port(self.serial_port_box.GetValue())
@@ -992,7 +995,8 @@ class HPexGUI(wx.Frame):
                              caption='XModem error',
                              style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
 
-
+            self.connecting_dialog.Close()
+            
         elif cmd == 'refresh':
             self.SetStatusText("Couldn't refresh from XModem server on " +
                                StringTools.trim_serial_port(self.serial_port_box.GetValue())
@@ -1001,9 +1005,9 @@ class HPexGUI(wx.Frame):
             wx.MessageDialog(self, 'Unable to refresh files on XModem server.',
                              caption='XModem error',
                              style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
-            
+
         self.disable_on_disconnect()
-        self.connecting_dialog.Close()
+
         self.connected = False
         self.connect_button.SetLabelText('Connect')
         print('xmodem_failed, self.connected is', self.connected)

@@ -564,10 +564,15 @@ class FileGetDialog(wx.Frame):
     def on_close(self, event=None):
         #pub.unsubscribe(
         #    self.kermit_newdata, f'kermit.newdata.{self.topic}')
+
         pub.unsubscribe(
             self.kermit_failed, f'kermit.failed.{self.topic}')
         pub.unsubscribe(
             self.kermit_cancelled, f'kermit.cancelled.{self.topic}')
         pub.unsubscribe(self.kermit_done, f'kermit.done.{self.topic}')
 
+        pub.unsubscribe(self.xmodem_failed, f'xmodem.failed.{self.topic}')
+        pub.unsubscribe(self.serial_port_error, f'xmodem.serial_port_error.{self.topic}')
+        pub.unsubscribe(self.xmodem_cancelled, f'xmodem.cancelled.{self.topic}')
+        pub.unsubscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
         self.Destroy()
