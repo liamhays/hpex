@@ -18,6 +18,10 @@ from hpex.hp_variable import HPVariable
 
 # Because the GUI is drag and drop-based, the transfer dialogs start a
 # transfer on initialization.
+
+# TODO: FileGetDialog needs to manage overwriting on the local side
+# with XModem, and probably follow the same scheme as Kermit so we
+# don't need multiple messages.
 class FileSendDialog(wx.Frame):
     def __init__(self, parent, file_message, port, filename,
                  file_already_exists=False, use_xmodem=False,
@@ -96,8 +100,6 @@ class FileSendDialog(wx.Frame):
         
         self.label_sizer.Add(self.file_contents_box)
 
-        # No 'rename on calculator' option anymore.
-        
         self.progress_text = wx.StaticText(
             self,
             wx.ID_ANY,
@@ -272,6 +274,7 @@ class FileSendDialog(wx.Frame):
                           self.filename,
                           'send_connect',
                           True, # short timeout because parent is connected
+                          '', # current local path doesn't matter for sending
                           self.topic))
                 
                 self.xmodem.start()
@@ -316,15 +319,15 @@ class FileSendDialog(wx.Frame):
         
 class FileGetDialog(wx.Frame):
     def __init__(self, parent, message,
-                 file_message, port, varname,
+                 file_message, port, filename,
                  current_dir, # this needs to be here because we 'cd' in Kermit
                  use_xmodem, 
                  success_callback=None):
         
-        wx.Frame.__init__(self, parent, title=f'Get {varname}')
+        wx.Frame.__init__(self, parent, title=f'Get {filename}')
         
         self.port = port
-        self.varname = varname
+        self.filename = filename
         self.parent = parent
         self.current_dir = current_dir
         self.use_xmodem = use_xmodem
@@ -338,14 +341,14 @@ class FileGetDialog(wx.Frame):
         # exists, ask about overwriting
         ask = HPexSettingsTools.load_settings()['ask_for_overwrite']
         if ask:
-            if varname in os.listdir(self.current_dir):
+            if filename in os.listdir(self.current_dir):
                 # just let the user know, so that they know what will
                 # happen
                 self.result = wx.MessageDialog(
                     self,
-                    f"'{varname}' already exists in " +
+                    f"'{filename}' already exists in " +
                     str(self.current_dir) +
-                    f".\nDo you want to overwrite the existing file?\nIf you choose not to overwrite, files will become '{varname}.~1~', '{varname}.~2~', etc.",
+                    f".\nDo you want to overwrite the existing file?\nIf you choose not to overwrite, files will become '{filename}.~1~', '{filename}.~2~', etc.",
                     'File already exists',
                     wx.YES_NO | wx.ICON_QUESTION | wx.CANCEL | wx.NO_DEFAULT).ShowModal()
                 if self.result == wx.ID_YES:
@@ -362,7 +365,6 @@ class FileGetDialog(wx.Frame):
 
         # Don't need to subscribe to kermit.newdata, because there's
         # no data available when receiving
-        
         #pub.subscribe(
         #    self.kermit_newdata, f'kermit.newdata.{self.topic}')
         pub.subscribe(
@@ -371,6 +373,11 @@ class FileGetDialog(wx.Frame):
             self.kermit_cancelled, f'kermit.cancelled.{self.topic}')
         pub.subscribe(self.kermit_done, f'kermit.done.{self.topic}')
 
+        # no xmodem.newdata either
+        pub.subscribe(self.xmodem_failed, f'xmodem.failed.{self.topic}')
+        pub.subscribe(self.serial_port_error, f'xmodem.serial_port_error.{self.topic}')
+        pub.subscribe(self.xmodem_cancelled, f'xmodem.cancelled.{self.topic}')
+        pub.subscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
         # for some reason, closing the window with the close button
         # after doing something with kermit causes a RuntimeError
         
@@ -388,14 +395,19 @@ class FileGetDialog(wx.Frame):
             0,
             wx.EXPAND | wx.ALL)
 
+
+        # XModem doesn't send progress either, or at least the xmodem
+        # module doesn't provide a way to access that information
+        self.progress_text = wx.StaticText(
+            self,
+            wx.ID_ANY,
+            'Progress not available when receiving.')
+
         self.label_sizer.Add(
-            wx.StaticText(
-                self,
-                wx.ID_ANY,
-                'Progress not available when receiving.'),
+            self.progress_text,
             0,
             wx.EXPAND | wx.ALL)
-                
+
         self.file_contents_box = wx.StaticBoxSizer(
             wx.VERTICAL, self, 'File info')
 
@@ -430,17 +442,63 @@ class FileGetDialog(wx.Frame):
         self.Show(True)
         self.Update()
 
-        self.run_kermit(event=None)
+        if self.use_xmodem:
+            self.run_xmodem()
+        else:
+            self.run_kermit(event=None)
         
     def reset_progress(self):
         self.cancel_button.Disable()
         
 
+    def run_xmodem(self):
+        print('run_xmodem')
+
+        self.xmodem_connector = XModemConnector()
+        # receive from XModem server can't be done without being
+        # connected, so we don't need a check here.
+        self.xmodem = threading.Thread(
+            target = self.xmodem_connector.run,
+            args=(self.port,
+                  self,
+                  self.filename,
+                  'get_connect',
+                  True, # short timeout
+                  self.current_dir,
+                  self.topic))
+        self.xmodem.start()
+
+        self.cancel_button.Enable()
+
+    def xmodem_failed(self):
+        print('FileGetDialog: xmodem_failed')
+        self.parent.SetStatusText(f'XModem failed to transfer {self.filename} from {self.port}')
+        self.cancel_button.Disable()
+        XModemErrorDialog(
+            parent=self,
+            boxmessage=f'XModem could not transfer {self.filename} from the server at {self.port}',
+            close_func=self.on_close).Show(True)
+        
+    def serial_port_error(self):
+        print('FileGetDialog: xmodem_failed')
+
+    def xmodem_cancelled(self):
+        print('FileGetDialog: xmodem_cancelled')
+
+    def xmodem_done(self):
+        print('FileGetDialog: xmodem_done')
+        # only one way to receive, remember
+        self.parent.SetStatusText(f"Successfully transferred '{self.filename}' from calculator.")
+        if callable(self.success_callback):
+            self.success_callback.__call__()
+            
+        self.on_close()
+        
     def kermit_failed(self, cmd, out):
         print('kermit failed')
 
         self.parent.SetStatusText(
-            f'Kermit failed to transfer {self.varname} from {self.port}')
+            f'Kermit failed to transfer {self.filename} from {self.port}')
         self.cancel_button.Disable()
         out = KermitProcessTools.strip_blank_lines(out)
         q_lines = ''
@@ -463,7 +521,7 @@ class FileGetDialog(wx.Frame):
         
     def kermit_done(self, cmd, out):
         self.parent.SetStatusText(
-            f"Successfully transferred '{self.varname}' from calculator.")
+            f"Successfully transferred '{self.filename}' from calculator.")
         print('kermit succeeded')
         self.reset_progress()
         if callable(self.success_callback):
@@ -477,7 +535,7 @@ class FileGetDialog(wx.Frame):
             command = ''
         # move to the right directory
         command += 'cd ' + str(self.current_dir) + ','
-        command += f'get {self.varname}'
+        command += f'get {self.filename}'
         print(command)
         # this code is basically the same as the connecting code
         self.kermit_connector = KermitConnector()
@@ -495,8 +553,11 @@ class FileGetDialog(wx.Frame):
         self.cancel_button.Enable()
         
     def cancel(self, event):
-        if self.kermit_connector.isalive():
-            self.kermit_connector.cancel_kermit()
+        if self.use_xmodem:
+            self.xmodem_connector.cancel()
+        else:
+            if self.kermit_connector.isalive():
+                self.kermit_connector.cancel_kermit()
         self.on_close(event=None)
 
     

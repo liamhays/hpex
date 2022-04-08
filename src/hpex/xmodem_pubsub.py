@@ -12,10 +12,11 @@ from hpex.settings import HPexSettingsTools
 from hpex.hp_variable import HPVariable
 from hpex.helpers import KermitProcessTools # needed for checksum_to_hexstr
 
-# TODO: use different timeouts (they can be reconfigured) when
-# connecting to a server and when sending a file and not connected.
 # TODO: when connecting, the statusbar should be updated (because it
 # can be slow)---unless the above todo makes this irrelevant
+
+# TODO: test what the output of Conn4x gives---do the received files
+# have the extra \x00 bytes at the end?
 ACK = b'\x06'
 class XModemConnector:
     def getc(self, size, timeout=.1):
@@ -26,7 +27,7 @@ class XModemConnector:
         #print('putc')
         return self.ser.write(data) or None
         
-    def run(self, port, parent, fname, command, short_timeout, ptopic,
+    def run(self, port, parent, fname, command, short_timeout, current_path, ptopic,
             use_callafter=True, alt_options=None): # ptopic for parent
         if use_callafter:
             # So this is kind of a kludge. We don't want to globally
@@ -47,6 +48,7 @@ class XModemConnector:
         self.command = command
         self.ptopic = ptopic
         self.use_callafter = use_callafter
+        self.current_path = current_path
         # this tells the receiver frame whether or not to update the
         # progress bar
         self.should_update = True
@@ -59,7 +61,9 @@ class XModemConnector:
             self.ser_timeout = 3
             
         self.cancelled = False
-        if self.command == 'send_connect' or self.command == 'get_connect' or self.command == 'send':
+        if self.command == 'send_connect' or self.command == 'send':
+            print('send or send_connect, self.fname is', self.fname)
+            print('cwd is', os.getcwd())
             # 128 bytes per XModem packet, and we round up.
             self.packet_count = math.ceil(
                 os.path.getsize(self.fname) / 128)
@@ -138,7 +142,7 @@ class XModemConnector:
                 self.stream = open(fname, 'rb')
                 self.success = self.modem.send(
                     self.stream, retry=9, timeout=1,
-                    quiet=True, callback=self.send_callback)
+                    quiet=True, callback=self.callback)
                 
             except:
                 # we probably won't get here, but if we do, we still can
@@ -170,12 +174,23 @@ class XModemConnector:
             try:
                 self.ser.flush()
                 self.sendCommand(b'G')
-                self.sendCommandPacket(Path(fname).name)
-                self.stream = open(fname, 'wb')
-                self.success = self.modem.rcev(
+                self.sendCommandPacket(fname)
+                self.stream = open(Path(self.current_path,fname), 'wb')
+                # when receiving, success is zero on failure or bytes
+                # successfully sent. We just have to assume that
+                # non-zero is success
+                self.success = self.modem.recv(
                     self.stream, retry=9, timeout=1,
-                    quiet=True, callback=self.send_callback)
-                
+                    quiet=False)
+                if self.use_callafter:
+                    wx.CallAfter(
+                        pub.sendMessage,
+                        f'xmodem.done.{self.ptopic}')                
+                else:
+                    pub.sendMessage(
+                        f'xmodem.done.{self.ptopic}')
+
+                print('after modem.recv')
             except:
                 # we probably won't get here, but if we do, we still can
                 # throw an error in the calling dialog
@@ -390,7 +405,7 @@ class XModemConnector:
             crc = objcrc[1] * 256 + objcrc[0]
             index += 2
 
-            objects.append(HPVariable(name, str(size), str(prolog),
+            objects.append(HPVariable(str(name, 'utf-8'), str(size), str(prolog),
                                       KermitProcessTools.checksum_to_hexstr(crc)))
 
         return memory, objects
@@ -422,7 +437,7 @@ class XModemConnector:
             pub.sendMessage,
             f'xmodem.disconnectdone.{self.ptopic}')
         
-    def send_callback(self, total_packets, success_count, error_count):
+    def callback(self, total_packets, success_count, error_count):
         if self.use_callafter:
             import wx
         #print(total_packets, success_count)

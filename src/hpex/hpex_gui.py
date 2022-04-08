@@ -1,12 +1,15 @@
 import threading
 import platform
 _system = platform.system()
-# global TODO: need some kind of "Kermit/XModem busy" indicator in main frame
-# TODO: maybe probe IOPAR on connect to see if calculator is in mode 3---but might be too slow
+
 # TODO: Fetching variables should check for escape characters and refuse to work
 
 # TODO: connecting dialog errors still persist
+# TOOD: No translation from XModem server...we must convert to UTF-8.
 
+# TODO: hex type to string type table
+# TODO: XModem server ends when transfer cancelled or fails, probably need 'xmodem_disconnected' event.
+# TODO: local refresh not working
 from pathlib import Path
 import os
 
@@ -592,7 +595,8 @@ class HPexGUI(wx.Frame):
                           self,
                           '', # no filename here
                           'refresh',
-                          True, 
+                          True,
+                          self.current_local_path,
                           self.topic))
                 self.xmodem.start()
             else:
@@ -877,8 +881,9 @@ class HPexGUI(wx.Frame):
             message=msg,
             file_message=filestats,
             port=StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
-            varname=var.name,
-            current_dir=self.current_local_path, 
+            filename=var.name,
+            current_dir=self.current_local_path,
+            use_xmodem=self.xmodem_mode, 
             success_callback=self.refresh_all_files)
         
     def start_remote_command_dialog(self, event=None):
@@ -1212,7 +1217,8 @@ class HPexGUI(wx.Frame):
                           self,
                           '', # no filename here
                           'connect',
-                          True, 
+                          True,
+                          self.current_local_path,
                           self.topic))
                 self.xmodem.start()
                 return
