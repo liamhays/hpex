@@ -4,15 +4,13 @@ _system = platform.system()
 
 # TODO: Fetching variables should check for escape characters and refuse to work
 
-# TODO: connecting dialog errors still persist
-
 # TODO: UTF-8 for Kermit will have to be separate function, because
 # ptyprocess doesn't understand anything over 0x7f.
 
-# TODO: hex type to string type table
 # TODO: XModem server ends when transfer cancelled or fails, probably need 'xmodem_disconnected' event.
 # TODO: disable connect button while connecting
 # TODO: issue with enabled/disabled status of "Not connected" text
+# TODO: XModem cancel in HPexGUI isn't cancelling XModem
 
 from pathlib import Path
 import os
@@ -1038,7 +1036,8 @@ class HPexGUI(wx.Frame):
                            '.')
 
     def xmodem_refreshdone(self, mem, varlist):
-        self.SetStatusText('Updated remote variables.')
+        if not self.connected:
+            self.SetStatusText('Updated remote variables.')
         print('refreshdone')
         self.hpvars = varlist
         self.populate_hp_listbox()
@@ -1223,7 +1222,6 @@ class HPexGUI(wx.Frame):
         if not self.connected:
             self.SetStatusText('Connecting to calculator...')
             if self.xmodem_mode:
-
                 self.connecting_dialog = ConnectingDialog(
                     self, self.connecting_dialog_cancel,
                     'Make sure the XModem server is running on the calculator.',
@@ -1232,7 +1230,8 @@ class HPexGUI(wx.Frame):
                 self.xmodem_connector = XModemConnector()
                 self.xmodem = threading.Thread(
                     target=self.xmodem_connector.run,
-                    args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
+                    # trim...() has already been called on the serial port box's contents
+                    args=(self.serial_port_box.GetValue(),
                           self,
                           '', # no filename here
                           'connect',
@@ -1244,7 +1243,6 @@ class HPexGUI(wx.Frame):
             
 
             else:
-                # this will show automatically
                 self.connecting_dialog = ConnectingDialog(
                     self, self.connecting_dialog_cancel,
                     'Make sure the calculator is in Kermit server mode and set to translate mode 3.',
@@ -1315,9 +1313,10 @@ class HPexGUI(wx.Frame):
     # needs an event, because this gets called by a bound event
     def connecting_dialog_cancel(self, event):
         if self.xmodem:
-            self.kermit_connector.kill_kermit()
+            self.xmodem_connector.server_cancel()
         else:
-            self.xmodem_connector.cancel()
+            self.kermit_connector.kill_kermit()
+
             
         self.connecting_dialog.Close()
         

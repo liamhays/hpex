@@ -97,6 +97,14 @@ class KermitProcessTools:
     def checksum_to_hexstr(checksum):
         return '#' + str(hex(int(checksum))).replace('0x', '').upper() + 'h'
 
+    
+
+    
+class XModemProcessTools:
+    @staticmethod
+    def packet_count_to_progress(s, fc):
+        return int((s / fc) * 100)
+
     @staticmethod
     def bytes_to_utf8(s: bytes) -> str:
         """Convert s (a bytes object containing 8-bit ASCII HP names)
@@ -154,11 +162,6 @@ class KermitProcessTools:
                 final_name += chr(b)
 
         return final_name
-class XModemProcessTools:
-    @staticmethod
-    def packet_count_to_progress(s, fc):
-        return int((s / fc) * 100)
-    
 class FileTools:
     @staticmethod
     def home_to_tilde(p):

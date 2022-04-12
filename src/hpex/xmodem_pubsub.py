@@ -10,7 +10,7 @@ import serial
 
 from hpex.settings import HPexSettingsTools
 from hpex.hp_variable import HPVariable
-from hpex.helpers import KermitProcessTools # needed for checksum_to_hexstr
+from hpex.helpers import KermitProcessTools, XModemProcessTools # needed for checksum_to_hexstr
 
 # TODO: when connecting, the statusbar should be updated (because it
 # can be slow)---unless the above todo makes this irrelevant
@@ -341,23 +341,28 @@ class XModemConnector:
             self.success = self.modem.recv(
                 tmp, retry=9, timeout=1,
                 quiet=False)
-            #if self.success:
-            #    self.clear_extra_bytes()
-            #    self.sendCommand(b'E')
-            #    self.sendCommandPacket("'$$$p' PURGE")
+            if self.success:
+                self.clear_extra_bytes()
+                self.sendCommand(b'E')
+                self.sendCommandPacket("'$$$p' PURGE")
             return tmp
         except:
             print('failed to get path')
             self.failure()
             return None
+        
     def run_M_L(self):
         print('run_M_L')
         if self.use_callafter:
             import wx
-        # Start by getting the free memory. As far as I can tell, this
-        # stuff has to be done in a specific order for it all to work
-        # right.
 
+        # When dealing with the XModem server, we still need to be
+        # able to cancel. However, we can't just call modem.abort(),
+        # so before every operation, we check the value of
+        # self.cancelled to see if we should still be working.
+        
+        if self.cancelled: return -1, None
+        # Start by getting the free memory.
         try:
             self.clear_extra_bytes()
             self.sendCommand(b'M')
@@ -368,7 +373,8 @@ class XModemConnector:
             self.failure()
             return -1, None # prevent unpack errors on failure, -1 is meaningless
             # also prevent int(None), which errors
-            
+
+        if self.cancelled: return -1, None
         # Even if nothing errors out, reading data from the server can
         # still fail.
         if memory == None:
@@ -378,7 +384,7 @@ class XModemConnector:
 
 
         # Finally, get the listing of the current directory.
-
+        if self.cancelled: return -1, None
         try:
             self.clear_extra_bytes()
             self.sendCommand(b'L')
@@ -398,6 +404,7 @@ class XModemConnector:
         objects = []
         # process for later
         while index < len(l):
+            if self.cancelled: return -1, None
             # 1st byte is object name length
             # n bytes following are object name
             # 2 bytes are object prolog
@@ -425,7 +432,7 @@ class XModemConnector:
             crc = objcrc[1] * 256 + objcrc[0]
             index += 2
 
-            objects.append(HPVariable(KermitProcessTools.bytes_to_utf8(name),
+            objects.append(HPVariable(XModemProcessTools.bytes_to_utf8(name),
                                       str(size), str(prolog),
                                       KermitProcessTools.checksum_to_hexstr(crc)))
 
@@ -433,41 +440,74 @@ class XModemConnector:
 
     def connect_to_server(self):
         import wx
-
         memory, objects = self.run_M_L()
+        
+        if self.cancelled: return
+        
         if HPexSettingsTools.load_settings()['reset_directory_on_disconnect']:
             pathfile = self.get_hp_path()
         else:
             pathfile = None
             
         version = self.run_V()
+        
+        if self.cancelled: return
         print(memory, version, objects)
-        wx.CallAfter(
-            pub.sendMessage,
-            f'xmodem.connectdone.{self.ptopic}',
-            mem=int(memory),
-            server_verstring=version.decode('utf-8'),
-            pathfile=pathfile,
-            varlist=objects)
+        if not self.cancelled:
+            wx.CallAfter(
+                pub.sendMessage,
+                f'xmodem.connectdone.{self.ptopic}',
+                mem=int(memory),
+                server_verstring=version.decode('utf-8'),
+                pathfile=pathfile,
+                varlist=objects)
 
     def disconnect_from_server(self, pathfile):
-
         import wx
+        if self.cancelled: return
         # Restore original directory if desired, and send command 'Q'
         # to quit server on calculator.
         try:
             self.clear_extra_bytes()
             if HPexSettingsTools.load_settings()['reset_directory_on_disconnect']:
                 print('reset directory')
+                if self.cancelled:
+                    print('cancelled')
+                    return
+                
                 self.sendCommand(b'P')
                 self.sendCommandPacket("$$$p")
+                
+                if self.cancelled:
+                    print('cancelled')
+                    return
                 # XModem.send does not automatically seek to the
                 # beginning of the file
                 pathfile.seek(0)
                 self.success = self.modem.send(
                     pathfile, retry=9, timeout=1,
                     quiet=True)# no callback
+                
+                if self.cancelled:
+                    self.modem.abort()
+                    # if we cancel at or beyond this point, the file
+                    # has probably already been sent. we should delete
+                    # it as a result.
+                    # TODO: actually test this on real hardware
+                    print('deleting $$$p')
+                    self.clear_extra_bytes()
+                    self.sendCommand(b'E')
+                    self.sendCommandPacket("'$$$p' PURGE")
+                    print('$$$p deleted')
+
+                    return
+                
                 self.clear_extra_bytes()
+
+                if self.cancelled:
+                    self.modem.abort()
+                    return
+                
                 self.sendCommand(b'E')
                 # DUP to duplicate the name, EVAL to get the variable
                 # value, SWAP to swap between value and variable name,
@@ -533,6 +573,10 @@ class XModemConnector:
                     error=error_count,
                     should_update=self.should_update)
 
+    def server_cancel(self):
+        # cancel any current server operation
+        self.cancelled = True
+    
     def cancel(self):
         self.cancelled = True
         self.should_update = False
