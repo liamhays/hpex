@@ -97,7 +97,63 @@ class KermitProcessTools:
     def checksum_to_hexstr(checksum):
         return '#' + str(hex(int(checksum))).replace('0x', '').upper() + 'h'
 
+    @staticmethod
+    def bytes_to_utf8(s: bytes) -> str:
+        """Convert s (a bytes object containing 8-bit ASCII HP names)
+        to UTF-8.
 
+        Equivalent Unicode symbols found by searching
+        unicode-table.com for something that matched the HP 48G
+        character browser, as well as the RPL character set page on
+        Wikipedia.
+
+        """
+
+        # Note that some of these characters can't actually be used in
+        # names. They're here just in case.
+
+        # And yeah, I realized well into this that the HP 48 character
+        # order is mostly the same (maybe even identical to the
+        # UTF-8), but I think this is a better way.
+        conversion_table = {
+            0x7f: '▒', # shaded block
+            0x80: '∡',
+            0x81: '', # x with overbar
+            0x82: '▽', 0x83: '√', 0x84: '∫', 0x85: 'Σ', 0x86: '▶', 0x87: 'π', 0x88: '∂', 0x89: '≤', 0x8a: '≥',
+            0x8b: '≠', 0x8c: '𝛼', 0x8d: '→', 0x8e: '←', 0x8f: '↓', 0x90: '↑', 0x91: 'γ', 0x92: 'δ', 0x93: 'ε',
+            0x94: 'η', 0x95: 'θ', 0x96: 'λ', 0x97: 'ρ', 0x98: 'σ', 0x99: 'τ', 0x9a: 'ω', 0x9b: 'Δ', 0x9c: 'Π',
+            0x9d: 'Ω',
+            0x9e: '■', # Black Square
+            0x9f: '∞',
+            0xa0: ' ', # non-breaking space (Latin-1 Supplement)
+            0xa1: '¡', 0xa2: '¢', 0xa3: '£', 0xa4: '¤', # currency sign
+            0xa5: '¥', 0xa6: '¦', # Broken Bar, best matches HP 48 symbol
+            0xa7: '§', 0xa8: '¨', # Combining Diaeresis
+            0xa9: '©', 0xaa: 'ª', # Feminine Ordinal Indicator
+            0xab: '«', 0xac: '¬', # Not Sign
+            0xad: '­', # Soft Hyphen
+            0xae: '®', 0xaf: '¯', # Macron
+            0xb0: '°', 0xb1: '±', 0xb2: '²', 0xb3: '³', 0xb4: '´', # Acute Accent
+            0xb5: 'µ', 0xb6: '¶', 0xb7: '·', # Middle Dot
+            0xb8: '¸', # Cedilla
+            0xb9: '¹', 0xba: 'º', # Masculine Ordinal Indicator
+            0xbb: '»', 0xbc: '¼', 0xbd: '½', 0xbe: '¾', 0xbf: '¿', 0xc0: 'À', 0xc1: 'Á', 0xc2: 'Â', 0xc3: 'Ã',
+            0xc4: 'Ä', 0xc5: 'Å', 0xc6: 'Æ', 0xc7: 'Ç', 0xc8: 'È', 0xc9: 'É', 0xca: 'Ê', 0xcb: 'Ë', 0xcc: 'Ì',
+            0xcd: 'Í', 0xce: 'Î', 0xcf: 'Ï', 0xd0: 'Ð', 0xd1: 'Ñ', 0xd2: 'Ò', 0xd3: 'Ó', 0xd4: 'Ô', 0xd5: 'Õ',
+            0xd6: 'Ö', 0xd7: '×', 0xd8: 'Ø', 0xd9: 'Ù', 0xda: 'Ú', 0xdb: 'Û', 0xdc: 'Ü', 0xdd: 'Ý', 0xde: 'Þ',
+            0xdf: 'ß', 0xe0: 'à', 0xe1: 'á', 0xe2: 'â', 0xe3: 'ã', 0xe4: 'ä', 0xe5: 'å', 0xe6: 'æ', 0xe7: 'ç',
+            0xe8: 'è', 0xe9: 'é', 0xea: 'ê', 0xeb: 'ë', 0xec: 'ì', 0xed: 'í', 0xee: 'î', 0xef: 'ï', 0xf0: 'ð',
+            0xf1: 'ñ', 0xf2: 'ò', 0xf3: 'ó', 0xf4: 'ô', 0xf5: 'õ', 0xf6: 'ö', 0xf7: '÷', 0xf8: 'ø', 0xf9: 'ù',
+            0xfa: 'ú', 0xfb: 'û', 0xfc: 'ü', 0xfd: 'ý', 0xfe: 'þ', 0xff: 'ÿ'
+        }
+        final_name = ''
+        for b in s:
+            if b >= 0x7f:
+                final_name += conversion_table[b]
+            else:
+                final_name += chr(b)
+
+        return final_name
 class XModemProcessTools:
     @staticmethod
     def packet_count_to_progress(s, fc):
@@ -239,7 +295,7 @@ class FileTools:
         On Windows, it simply returns the first USB COM port found.
         """
 
-        return '/dev/pts/7'
+        return '/dev/pts/3'
         if _system == 'Windows':
             if parent != None:
                 parent.SetStatusText('Searching for COM ports...')
@@ -317,3 +373,6 @@ class StringTools(object):
     @staticmethod
     def trim_serial_port(port_str):
         return re.sub(r'\s+', '', port_str)
+
+
+    

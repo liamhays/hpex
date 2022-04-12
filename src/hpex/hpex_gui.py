@@ -5,11 +5,15 @@ _system = platform.system()
 # TODO: Fetching variables should check for escape characters and refuse to work
 
 # TODO: connecting dialog errors still persist
-# TOOD: No translation from XModem server...we must convert to UTF-8.
+
+# TODO: UTF-8 for Kermit will have to be separate function, because
+# ptyprocess doesn't understand anything over 0x7f.
 
 # TODO: hex type to string type table
 # TODO: XModem server ends when transfer cancelled or fails, probably need 'xmodem_disconnected' event.
-# TODO: local refresh not working
+# TODO: disable connect button while connecting
+# TODO: issue with enabled/disabled status of "Not connected" text
+
 from pathlib import Path
 import os
 
@@ -585,6 +589,7 @@ class HPexGUI(wx.Frame):
     def refresh_all_files(self, event=None):
         self.refresh_local_files()
         if self.connected:
+            self.SetStatusText('Refreshing remote files...')
             if self.xmodem:
                 self.save_hp_selection()
                 print('xmodem refresh')
@@ -742,7 +747,7 @@ class HPexGUI(wx.Frame):
             
         self.kermit = threading.Thread(
             target=self.kermit_connector.run,
-            args=(StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
+            args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
                   self,
                   'remote directory',
                   self.topic,
@@ -920,7 +925,8 @@ class HPexGUI(wx.Frame):
                 t = 'Global Name'
                 
             self.hpvars.append(
-                HPVariable(name=i[0], size=i[1], vtype=t,
+                HPVariable(name=i[0],
+                           size=i[1], vtype=t,
                            crc=KermitProcessTools.checksum_to_hexstr(i[3])))
 
         
@@ -950,7 +956,16 @@ class HPexGUI(wx.Frame):
         return False
 
 
-    def xmodem_connectdone(self, mem, server_verstring, varlist):
+    def xmodem_connectdone(self, mem, server_verstring, pathfile, varlist):
+        # None is returned if pathfile is not generated (or if it
+        # fails, I suppose, but that should already be handled by the
+        # error handler). It wouldn't be generated in the event that
+        # the user settings don't ask to reset the calculator
+        # directory on disconnect.
+        if pathfile != None:
+            pathfile.seek(0)
+            print(pathfile.read())
+            self.pathfile = pathfile
         # will eventually need to save selected item like Kermit
 
         # Extract the server version---which probably never changes,
@@ -1023,6 +1038,7 @@ class HPexGUI(wx.Frame):
                            '.')
 
     def xmodem_refreshdone(self, mem, varlist):
+        self.SetStatusText('Updated remote variables.')
         print('refreshdone')
         self.hpvars = varlist
         self.populate_hp_listbox()
@@ -1165,8 +1181,7 @@ class HPexGUI(wx.Frame):
                     return
                 else:
                     self.reselect_hp_var()
-                    
-                #self.SetStatusText('Updated remote variables.')
+                self.SetStatusText('Updated remote variables.')
             else:
                 self.SetStatusText(
                     'Connected to Kermit server on ' +
@@ -1247,20 +1262,25 @@ class HPexGUI(wx.Frame):
         else:# self.connected
             if self.xmodem_mode:
                 print('disconnect in xmodem mode')
-                # this isn't working, for sure
+
                 self.connecting_dialog = ConnectingDialog(
                     self, self.connecting_dialog_cancel,
                     "Finishing XModem server on calculator...",
                     'Finishing...',)
-                # send Q to server
-                # disconnect should check reset directory on disconnect
+
+                if not HPexSettingsTools.load_settings()['reset_directory_on_disconnect']:
+                    # if this has been disabled, we still pass it to
+                    # the connector, but it isn't ever used.
+                    self.pathfile = None
+
                 self.xmodem = threading.Thread(
                     target=self.xmodem_connector.run,
                     args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
                           self,
-                          '', # no filename here
+                          self.pathfile,
                           'disconnect',
-                          True, 
+                          True,
+                          self.current_local_path,
                           self.topic))
                 self.xmodem.start()
 

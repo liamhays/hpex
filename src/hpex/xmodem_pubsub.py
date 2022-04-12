@@ -2,10 +2,10 @@ import os
 import math
 import time
 from pathlib import Path
+import tempfile
 
 import xmodem
 from pubsub import pub
-
 import serial
 
 from hpex.settings import HPexSettingsTools
@@ -26,7 +26,9 @@ class XModemConnector:
     def putc(self, data, timeout=.1):
         #print('putc')
         return self.ser.write(data) or None
-        
+
+    # fname is either a string (file to get or receive), or if command
+    # == 'disconnect', a temporary file that contains the original path.
     def run(self, port, parent, fname, command, short_timeout, current_path, ptopic,
             use_callafter=True, alt_options=None): # ptopic for parent
         if use_callafter:
@@ -119,7 +121,7 @@ class XModemConnector:
         if command == 'connect':
             self.connect_to_server()
         elif command == 'disconnect':
-            self.disconnect_from_server()
+            self.disconnect_from_server(fname)
         elif command == 'refresh':
             # run M and L
             memory, objects = self.run_M_L()
@@ -311,9 +313,10 @@ class XModemConnector:
         
     def run_V(self):
         # increases reliability like in run_M_L
-        self.clear_extra_bytes()
+
         # Now get the version of the XModem server
         try:
+            self.clear_extra_bytes()
             self.sendCommand(b'V')
             version = self.getCommandPacket()
             print('version', version)
@@ -325,7 +328,28 @@ class XModemConnector:
         # don't need a special 'if version == None' here because
         # there's only one return value
         return version
-    
+
+    def get_hp_path(self):
+        tmp = tempfile.TemporaryFile()
+        try:
+            self.clear_extra_bytes()
+            self.sendCommand(b'E')
+            self.sendCommandPacket("PATH '$$$p' STO")
+            self.clear_extra_bytes()
+            self.sendCommand(b'G')
+            self.sendCommandPacket('$$$p')
+            self.success = self.modem.recv(
+                tmp, retry=9, timeout=1,
+                quiet=False)
+            #if self.success:
+            #    self.clear_extra_bytes()
+            #    self.sendCommand(b'E')
+            #    self.sendCommandPacket("'$$$p' PURGE")
+            return tmp
+        except:
+            print('failed to get path')
+            self.failure()
+            return None
     def run_M_L(self):
         print('run_M_L')
         if self.use_callafter:
@@ -334,10 +358,8 @@ class XModemConnector:
         # stuff has to be done in a specific order for it all to work
         # right.
 
-        # needed so that this works after refresh
-        # also probably increases reliability in general
-        self.clear_extra_bytes()
         try:
+            self.clear_extra_bytes()
             self.sendCommand(b'M')
             memory = self.getCommandPacket()
             print('memory in try', memory)
@@ -356,8 +378,9 @@ class XModemConnector:
 
 
         # Finally, get the listing of the current directory.
-        self.clear_extra_bytes()
+
         try:
+            self.clear_extra_bytes()
             self.sendCommand(b'L')
             self.ser.flush()
             time.sleep(.3)
@@ -390,14 +413,11 @@ class XModemConnector:
             prolog = hex(prologstr[1] * 256 + prologstr[0])
             index += 2
             
-            # object size is 3 bytes, which encode the size of the object
-            # minus 1 and multiplied by 2 (to account for nibbles)
+            # object size is 3 bytes, which encode the size of the
+            # object multiplied by 2 (to account for nibbles)
             
-            # The minus one comes from the fact that the Conn4x source
-            # adds 1 to the size value before dividing by 2. However, more
-            # accurate results seem to come without adding that 1.
             objsize = l[index:index + 3]
-            size = objsize[2] * 65535 + objsize[1] * 256 + objsize[0]
+            size = objsize[2] * 65536 + objsize[1] * 256 + objsize[0]
             size /= 2
             index += 3
             
@@ -405,7 +425,8 @@ class XModemConnector:
             crc = objcrc[1] * 256 + objcrc[0]
             index += 2
 
-            objects.append(HPVariable(str(name, 'utf-8'), str(size), str(prolog),
+            objects.append(HPVariable(KermitProcessTools.bytes_to_utf8(name),
+                                      str(size), str(prolog),
                                       KermitProcessTools.checksum_to_hexstr(crc)))
 
         return memory, objects
@@ -414,22 +435,50 @@ class XModemConnector:
         import wx
 
         memory, objects = self.run_M_L()
-        self.clear_extra_bytes()
+        if HPexSettingsTools.load_settings()['reset_directory_on_disconnect']:
+            pathfile = self.get_hp_path()
+        else:
+            pathfile = None
+            
         version = self.run_V()
         print(memory, version, objects)
         wx.CallAfter(
-            pub.sendMessage, 
+            pub.sendMessage,
             f'xmodem.connectdone.{self.ptopic}',
-            mem=int(memory), 
+            mem=int(memory),
             server_verstring=version.decode('utf-8'),
+            pathfile=pathfile,
             varlist=objects)
 
-    def disconnect_from_server(self):
+    def disconnect_from_server(self, pathfile):
+
         import wx
-        # Send command 'Q' to quit server on calculator.
+        # Restore original directory if desired, and send command 'Q'
+        # to quit server on calculator.
         try:
+            self.clear_extra_bytes()
+            if HPexSettingsTools.load_settings()['reset_directory_on_disconnect']:
+                print('reset directory')
+                self.sendCommand(b'P')
+                self.sendCommandPacket("$$$p")
+                # XModem.send does not automatically seek to the
+                # beginning of the file
+                pathfile.seek(0)
+                self.success = self.modem.send(
+                    pathfile, retry=9, timeout=1,
+                    quiet=True)# no callback
+                self.clear_extra_bytes()
+                self.sendCommand(b'E')
+                # DUP to duplicate the name, EVAL to get the variable
+                # value, SWAP to swap between value and variable name,
+                # PURGE to delete variable, EVAL to change path.
+                self.sendCommandPacket("'$$$p' DUP EVAL SWAP PURGE EVAL")
+
+            self.clear_extra_bytes()
             self.sendCommand(b'Q')
-        except:
+            
+        except Exception as e:
+            print(e)
             self.failure()
             return
 
