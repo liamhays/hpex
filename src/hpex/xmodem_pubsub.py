@@ -130,19 +130,22 @@ class XModemConnector:
                     pub.sendMessage, 
                     f'xmodem.refreshdone.{self.ptopic}',
                     mem=int(memory), 
-                    #server_verstring=version.decode('utf-8'),
                     varlist=objects)
-            
+
+        # Retries have to be high here because of the weirdness of the
+        # XModem server trying to interact with 'D'.
         elif command == 'send_connect':
             print('sending file, send_connect')
             # send_connect means that HPex is connected to the XModem server
             try:
+                self.clear_extra_bytes()
                 self.ser.flush()
                 self.sendCommand(b'P')
                 self.sendCommandPacket(Path(fname).name)
                 self.stream = open(fname, 'rb')
+                # 6 retries: 4 for the weird 'D' thing, and 2 for good measure.
                 self.success = self.modem.send(
-                    self.stream, retry=9, timeout=1,
+                    self.stream, retry=9, timeout=self.ser_timeout,
                     quiet=True, callback=self.callback)
                 
             except:
@@ -268,7 +271,7 @@ class XModemConnector:
         self.ser.write(s)
         self.ser.flush()
         c = self.ser.read()
-        while c != ACK:
+        while c != ACK and not self.cancelled:
             c = self.ser.read()
             print(c)
 
@@ -298,6 +301,8 @@ class XModemConnector:
 
     def failure(self):
         cmd = self.command
+        # used to stop checking for ACK
+        self.cancelled = True
         if self.use_callafter:
             import wx
             wx.CallAfter(
@@ -500,7 +505,7 @@ class XModemConnector:
                 # beginning of the file
                 pathfile.seek(0)
                 self.success = self.modem.send(
-                    pathfile, retry=9, timeout=1,
+                    pathfile, retry=9, timeout=self.ser_timeout,
                     quiet=True)# no callback
                 
                 if self.cancelled:
@@ -586,6 +591,15 @@ class XModemConnector:
                     should_update=self.should_update)
 
     def cancel(self):
+        self.modem.abort()
         # cancel any current server operation
         self.cancelled = True
-    
+        if self.use_callafter:
+            import wx
+            wx.CallAfter(
+                pub.sendMessage,
+                f'xmodem.cancelled.{self.ptopic}')
+                           
+        else:
+            pub.sendMessage(
+                f'xmodem.cancelled.{self.ptopic}')

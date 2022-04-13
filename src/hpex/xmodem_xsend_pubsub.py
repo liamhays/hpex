@@ -51,7 +51,6 @@ class XModemXSendConnector:
         # this tells the receiver frame whether or not to update the
         # progress bar
         self.should_update = True
-        # an actual cancelled variable
 
         self.ser_timeout = 3
             
@@ -105,8 +104,16 @@ class XModemXSendConnector:
         try:
             self.ser.flush()
             self.stream = open(fname, 'rb')
+            # One issue (slightly odd) that can arise is that after a
+            # cancelled send, XModem is still trying to send to the
+            # calculator. This makes connecting fail, because there's
+            # a serial conflict (maybe) or the modem receives invalid
+            # data.
+
+            # Reducing the retry count (which should maybe even be
+            # 1---we'll see) helps fix that: the modem just errors out.
             self.success = self.modem.send(
-                self.stream, retry=9, timeout=1,
+                self.stream, retry=1, timeout=self.ser_timeout,
                 quiet=True, callback=self.callback)
             
         except:
@@ -125,7 +132,8 @@ class XModemXSendConnector:
                 
                 return
 
-        if not self.success and not self.cancelled:
+        #if not self.success and not self.cancelled:
+        if not self.cancelled:
             #print('not self.success and not self.cancelled')
             if self.use_callafter:
                 wx.CallAfter(
@@ -188,7 +196,7 @@ class XModemXSendConnector:
     def cancel(self):
         self.cancelled = True
         self.should_update = False
-        self.modem.abort(timeout=2)
+        self.modem.abort(timeout=1)
 
         if self.use_callafter:
             import wx

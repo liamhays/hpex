@@ -104,6 +104,7 @@ class HPexGUI(wx.Frame):
         pub.subscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
         pub.subscribe(self.xmodem_failed, f'xmodem.failed.{self.topic}')
         pub.subscribe(self.xmodem_refreshdone, f'xmodem.refreshdone.{self.topic}')
+        pub.subscribe(self.xmodem_transfercancelled, f'xmodem.transfercancelled.{self.topic}')
             
         self.menubar = wx.MenuBar()
         self.file_menu = wx.Menu()
@@ -862,6 +863,7 @@ class HPexGUI(wx.Frame):
             # we have to give the dialog the full path so that
             # Kermit can get it
             filename=filename.expanduser(),
+            ptopic=self.topic,
             file_already_exists=exists,
             use_xmodem=self.xmodem_mode,
             success_callback=self.refresh_all_files)
@@ -871,6 +873,14 @@ class HPexGUI(wx.Frame):
         print('start_local_transfer, index is', index)
         var = self.hpvars[index]
 
+        if '\\' in var.name:
+            # as far as I can tell, there is no way to transfer
+            # variables with extended ASCII characters in the name
+            wx.MessageDialog(self, 'Kermit cannot transfer variables with special characters! Please rename to transfer.',
+                             caption='Name error',
+                             style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
+            return
+        
         self.SetStatusText(f"Transferring '{var.name}' from calculator...")
         msg = f"You have chosen to transfer '{var.name}' from the HP48 at " + StringTools.trim_serial_port(self.serial_port_box.GetValue()) + '.'
         filestats = f'Size: {var.size}\nType: {var.vtype}\nChecksum: {var.crc}'
@@ -883,13 +893,14 @@ class HPexGUI(wx.Frame):
             port=StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
             filename=var.name,
             current_dir=self.current_local_path,
-            use_xmodem=self.xmodem_mode, 
+            use_xmodem=self.xmodem_mode,
+            ptopic=self.topic,
             success_callback=self.refresh_all_files)
         
     def start_remote_command_dialog(self, event=None):
         RemoteCommandDialog(
             self,
-            StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue()))).go()
+            StringTools.trim_serial_port(self.serial_port_box.GetValue())).go()
 
     def process_kermit_data(self, output):
         # This function takes the output from Kermit, splits by lines
@@ -936,7 +947,7 @@ class HPexGUI(wx.Frame):
 
     def empty_port_box_warning(self) -> bool:
         # returns True if box is empty, False otherwise
-        if StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) == '':
+        if StringTools.trim_serial_port(self.serial_port_box.GetValue()) == '':
             print('empty serial port box')
             wx.MessageDialog(self, 'Serial port box is empty! Please input a port to use.',
                              caption='Serial error',
@@ -1015,6 +1026,13 @@ class HPexGUI(wx.Frame):
         self.connected = False
         self.connect_button.SetLabelText('Connect')
         print('xmodem_failed, self.connected is', self.connected)
+
+    def xmodem_transfercancelled(self):
+        # When a transfer is cancelled, the XModem server quits, so we
+        # emulate a disconnect
+        self.disable_on_disconnect()
+        self.connected = False
+        self.connect_button.SetLabelText('Connect')
 
         
     def xmodem_disconnectdone(self):
@@ -1300,7 +1318,7 @@ class HPexGUI(wx.Frame):
     # needs an event, because this gets called by a bound event
     def connecting_dialog_cancel(self, event):
         if self.xmodem:
-            self.xmodem_connector.server_cancel()
+            self.xmodem_connector.cancel()
         else:
             self.kermit_connector.kill_kermit()
 

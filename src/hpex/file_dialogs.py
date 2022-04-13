@@ -21,7 +21,7 @@ from hpex.hp_variable import HPVariable
 # transfer on initialization.
 
 class FileSendDialog(wx.Frame):
-    def __init__(self, parent, file_message, port, filename,
+    def __init__(self, parent, file_message, port, filename, ptopic,
                  file_already_exists=False, use_xmodem=False,
                  success_callback=None):
         
@@ -36,7 +36,7 @@ class FileSendDialog(wx.Frame):
 
         self.overwrite = False
         # no remote files in XModem mode
-
+        self.ptopic = ptopic
         self.topic = 'FileSendDialog'
 
         # ask for overwriting, but note that it only matters in Kermit
@@ -198,12 +198,20 @@ class FileSendDialog(wx.Frame):
             
         self.on_close(event=None)
         
-    def xmodem_cancelled(self, file_count):
+    def xmodem_cancelled(self):
         self.reset_progress(' XModem transfer cancelled.')
         self.parent.SetStatusText(
             f'XModem file copy to {self.port} cancelled.')
 
-
+        # When an XModem transfer to the calculator server is
+        # cancelled, the XModem server exits. We have a simple event
+        # that notifies the HPex parent window that such a thing has
+        # happened.
+        wx.CallAfter(
+            pub.sendMessage,
+            f'xmodem.transfercancelled.{self.ptopic}')
+        
+        self.on_close(event=None)
     def kermit_failed(self, cmd, out):
         print('kermit failed')
 
@@ -233,7 +241,8 @@ class FileSendDialog(wx.Frame):
         self.reset_progress(
             extra_text=' Kermit cancelled; you may have to press [ATTN] or [CANCEL].')
         self.Fit()
-
+        self.on_close(event=None)
+        
     def kermit_done(self, cmd, out):
         self.parent.SetStatusText(
             f"Successfully transferred '{self.basename}' to calculator.")
@@ -296,7 +305,7 @@ class FileSendDialog(wx.Frame):
                 self.kermit_connector.cancel_kermit()
         else:
             self.xmodem_connector.cancel()
-        self.on_close(event=None)
+
         
     def on_close(self, event=None):
         # unsubscribe to prevent accessing deleted objects
@@ -328,7 +337,8 @@ class FileGetDialog(wx.Frame):
     def __init__(self, parent, message,
                  file_message, port, filename,
                  current_dir, # this needs to be here because we 'cd' in Kermit
-                 use_xmodem, 
+                 use_xmodem,
+                 ptopic,
                  success_callback=None):
         
         wx.Frame.__init__(self, parent, title=f'Get {filename}')
@@ -339,7 +349,7 @@ class FileGetDialog(wx.Frame):
         self.current_dir = current_dir
         self.use_xmodem = use_xmodem
         self.success_callback = success_callback
-
+        self.ptopic = ptopic
         self.topic = 'FileGetDialog'
         self.overwrite = False
 
@@ -493,10 +503,18 @@ class FileGetDialog(wx.Frame):
             close_func=self.on_close).Show(True)
         
     def serial_port_error(self):
-        print('FileGetDialog: xmodem_failed')
+        print('FileGetDialog: serial_port_error')
+        self.xmodem_failed()
+
 
     def xmodem_cancelled(self):
         print('FileGetDialog: xmodem_cancelled')
+        self.parent.SetStatusText(f'XModem file copy from {self.port} cancelled.')
+        wx.CallAfter(
+            pub.sendMessage,
+            f'xmodem.transfercancelled.{self.ptopic}')
+        self.on_close()
+
 
     def xmodem_done(self):
         print('FileGetDialog: xmodem_done')
@@ -571,7 +589,6 @@ class FileGetDialog(wx.Frame):
         else:
             if self.kermit_connector.isalive():
                 self.kermit_connector.cancel_kermit()
-        self.on_close(event=None)
 
     
     def on_close(self, event=None):
