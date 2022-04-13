@@ -1,16 +1,12 @@
 import threading
 import platform
+import inspect
 _system = platform.system()
 
-# TODO: Fetching variables should check for escape characters and refuse to work
-
-# TODO: UTF-8 for Kermit will have to be separate function, because
-# ptyprocess doesn't understand anything over 0x7f.
-
-# TODO: XModem server ends when transfer cancelled or fails, probably need 'xmodem_disconnected' event.
-# TODO: disable connect button while connecting
+# TODO: disable connect button while connecting: urGENT
 # TODO: issue with enabled/disabled status of "Not connected" text
 # TODO: make all "files" go to "variables" for HP stuff
+# TODO: UPDIR disabled if remote path is HOME
 from pathlib import Path
 import os
 
@@ -437,31 +433,62 @@ class HPexGUI(wx.Frame):
     def hp_home(self, event):
         # Why don't we check for connection here? Because the internal
         # state will disable this button if we aren't connected.
-
-        # spawn a kermit thread
-        self.kermit_connector = KermitConnector()
-            
-        self.kermit = threading.Thread(
-            target=self.kermit_connector.run,
-            args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
-                  self,
-                  'remote host HOME',
-                  self.topic))
+        self.new_remote_path = True
         
-        self.kermit.start()
+        if self.xmodem_mode:
+            self.hp_path = ['HOME']
+            self.xmodem_connector = XModemConnector()
+            self.xmodem = threading.Thread(
+                target=self.xmodem_connector.run,
+                # trim...() has already been called on the serial port box's contents
+                args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
+                      self,
+                      '', 
+                      'home',
+                      self.current_local_path,
+                      self.topic))
+            self.xmodem.start()
+        else:
+            # spawn a kermit thread
+            self.kermit_connector = KermitConnector()
+            
+            self.kermit = threading.Thread(
+                target=self.kermit_connector.run,
+                args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
+                      self,
+                      'remote host HOME',
+                      self.topic))
+            
+            self.kermit.start()
 
     def hp_updir(self, event):
+        self.new_remote_path = True
         self.SetStatusText(f'Running UPDIR on calculator...')
-        self.kermit_connector = KermitConnector()
+        if self.xmodem_mode:
+            # trim last element
+            self.hp_path = self.hp_path[:-1]
+            self.xmodem_connector = XModemConnector()
+            self.xmodem = threading.Thread(
+                target=self.xmodem_connector.run,
+                args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
+                      self,
+                      '', 
+                      'updir',
+                      self.current_local_path,
+                      self.topic))
+            self.xmodem.start()
+        else:
+            # TODO: does this need new_remote_path?
+            self.kermit_connector = KermitConnector()
             
-        self.kermit = threading.Thread(
-            target=self.kermit_connector.run,
-            args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
-                  self,
-                  'remote host UPDIR',
-                  self.topic))
-        
-        self.kermit.start()
+            self.kermit = threading.Thread(
+                target=self.kermit_connector.run,
+                args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
+                      self,
+                      'remote host UPDIR',
+                      self.topic))
+            
+            self.kermit.start()
 
     # restore the drop targets to both listboxes
     # this function is needed when a transfer fails
@@ -584,6 +611,8 @@ class HPexGUI(wx.Frame):
         self.refresh_all_files()
         
     def refresh_all_files(self, event=None):
+        c = inspect.currentframe()
+        print(inspect.getouterframes(c, 2)[1][3])
         self.refresh_local_files()
         if self.connected:
             self.SetStatusText('Refreshing remote files...')
@@ -785,26 +814,44 @@ class HPexGUI(wx.Frame):
             self.populate_local_files()
 
     def hp_item_activated(self, event):
+
         sel_index = self.hp_files.GetFirstSelected()
         varname = self.hpvars[sel_index].name
 
         if self.hpvars[sel_index].vtype == 'Directory':
-            # this tells kermit_done() not to try to reselect a selected item
-            self.new_remote_path = True
-            print('varname', varname)
-            
             self.SetStatusText(
-                f'Changing calculator directory to {self.hp_selection}...')
+                f'Changing calculator directory to {varname}...')
 
-            self.kermit_connector = KermitConnector()
-            self.kermit = threading.Thread(
-                target=self.kermit_connector.run,
-                args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
-                      self,
-                      'remote host ' + f'{varname}' + ' EVAL',
-                      self.topic,
-                      False))
-            self.kermit.start()
+            if self.xmodem_mode:
+                self.new_remote_path = True
+                self.hp_path.append(varname)
+                print('chdir ' + varname)
+                self.xmodem_connector = XModemConnector()
+                self.xmodem = threading.Thread(
+                    target=self.xmodem_connector.run,
+                    # trim...() has already been called on the serial port box's contents
+                    args=(self.serial_port_box.GetValue(),
+                          self,
+                          varname, 
+                          'chdir',
+                          self.current_local_path,
+                          self.topic))
+                self.xmodem.start()
+
+            else:
+                # this tells kermit_done() not to try to reselect a selected item
+                self.new_remote_path = True
+                print('varname', varname)
+            
+                self.kermit_connector = KermitConnector()
+                self.kermit = threading.Thread(
+                    target=self.kermit_connector.run,
+                    args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
+                          self,
+                          'remote host ' + f'{varname}' + ' EVAL',
+                          self.topic,
+                          False))
+                self.kermit.start()
 
     def send_menu_callback(self, event):
         index = self.local_files.GetFirstSelected()
@@ -966,7 +1013,12 @@ class HPexGUI(wx.Frame):
             pathfile.seek(0)
             print(pathfile.read())
             self.pathfile = pathfile
-        # will eventually need to save selected item like Kermit
+
+        # hp_path is a list which is converted to HP list notation. we
+        # only need this for XModem server mode.
+        self.hp_path = ['HOME']
+        # TODO: will eventually need to save selected item like
+        # Kermit...this feels like it's probably old TODO
 
         # Extract the server version---which probably never changes,
         # but it's still cool to have.
@@ -986,41 +1038,24 @@ class HPexGUI(wx.Frame):
     def xmodem_failed(self, cmd):
         # interestingly, the existance of self.connected means that we
         # only need one error handler event and function
+
+        self.SetStatusText("Couldn't access XModem server on " +
+                           StringTools.trim_serial_port(self.serial_port_box.GetValue())
+                           + '.')
+        print('xmodem failed')
+        wx.MessageDialog(self, 'Unable to access XModem server.',
+                         caption='XModem error',
+                         style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
         
         if cmd == 'disconnect':
-
-            self.SetStatusText("Couldn't finish XModem server on " +
-                               StringTools.trim_serial_port(self.serial_port_box.GetValue())
-                               + '.')
-            print('xmodem failed on disconnect')
-            wx.MessageDialog(self, 'Unable to disconnect from XModem server.',
-                             caption='XModem error',
-                             style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
             # the connecting dialog is only shown on connect and
             # disconnect, so by handling it only in those commands, we
             # can prevent the 'object has been deleted' error.
             self.connecting_dialog.Close()
             
         elif cmd == 'connect':
-            self.SetStatusText("Couldn't connect to XModem server on " +
-                               StringTools.trim_serial_port(self.serial_port_box.GetValue())
-                               + '.')
-            print('xmodem failed on connect')
-            wx.MessageDialog(self, 'Unable to connect to XModem server.',
-                             caption='XModem error',
-                             style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
-
             self.connecting_dialog.Close()
             
-        elif cmd == 'refresh':
-            self.SetStatusText("Couldn't refresh from XModem server on " +
-                               StringTools.trim_serial_port(self.serial_port_box.GetValue())
-                               + '.')
-            print('xmodem failed on refresh')
-            wx.MessageDialog(self, 'Unable to refresh files on XModem server.',
-                             caption='XModem error',
-                             style=wx.OK | wx.CENTRE | wx.ICON_ERROR).ShowModal()
-
         self.disable_on_disconnect()
 
         self.connected = False
@@ -1051,11 +1086,15 @@ class HPexGUI(wx.Frame):
         self.reselect_hp_var()
         self.memfree = mem
         print('self.memfree', self.memfree)
-        self.hp_dir_label.SetLabelText(f'PATH TODO  {self.memfree} bytes free')
+        # HPex will always place the calculator in HOME, like Conn4x.
+        self.hp_dir_label.SetLabelText(f'{self.hp_path}  {self.memfree} bytes free')
         if self.connected:
             self.SetStatusText('Updated remote variables.')
             
     def xmodem_done(self):
+        # this is triggered when a directory change occurs and is
+        # successful
+        self.refresh_all_files()
         print('xmodem done')
         
     def kermit_cancelled(self, cmd, out):

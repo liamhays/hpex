@@ -236,6 +236,54 @@ class XModemConnector:
                     pub.sendMessage(f'xmodem.failed.{self.ptopic}')
                 
             self.stream.close()
+
+        elif command == 'chdir':
+            # fname is the directory to change to
+            print('change to', fname)
+            try:
+                self.sendCommand(b'E')
+                self.sendCommandPacket(fname)
+            except:
+                wx.CallAfter(
+                    pub.sendMessage,
+                    f'xmodem.failed.{self.ptopic}')
+                return
+
+            if not self.cancelled:
+                wx.CallAfter(
+                    pub.sendMessage,
+                    f'xmodem.done.{self.ptopic}')
+            
+        elif command == 'updir':
+            try:
+                self.sendCommand(b'E')
+                self.sendCommandPacket('UPDIR')
+            except:
+                wx.CallAfter(
+                    pub.sendMessage,
+                    f'xmodem.failed.{self.ptopic}')
+                return
+            
+            if not self.cancelled:
+                wx.CallAfter(
+                    pub.sendMessage,
+                    f'xmodem.done.{self.ptopic}')
+            
+        elif command == 'home':
+            try:
+                self.sendCommand(b'E')
+                self.sendCommandPacket('HOME')
+            except:
+                wx.CallAfter(
+                    pub.sendMessage,
+                    f'xmodem.failed.{self.ptopic}')
+                return
+
+            if not self.cancelled:
+                wx.CallAfter(
+                    pub.sendMessage,
+                    f'xmodem.done.{self.ptopic}')
+
         self.ser.close()
 
     def checksumStr(self, s: str) -> int:
@@ -259,7 +307,7 @@ class XModemConnector:
     def sendCommandPacket(self, instr: str):
         """Send command packet s to the XModem server and wait for ACK."""
         c = b''
-
+        retry_count = 0
         # We have to construct it like this, otherwise extra bytes get
         # added for no apparent reason
         s = bytearray()
@@ -272,10 +320,15 @@ class XModemConnector:
         self.ser.flush()
         c = self.ser.read()
         while c != ACK and not self.cancelled:
+            if retry_count == 3:
+                # too many retries, something is wrong
+                self.failure()
+                return
+            
             c = self.ser.read()
+            retry_count += 1
             print(c)
 
-        print('command packet successfully sent')
 
     def getCommandPacket(self) -> bytes:
         self.ser.flush()
@@ -331,8 +384,6 @@ class XModemConnector:
 
         
     def run_V(self):
-        # increases reliability like in run_M_L
-
         # Now get the version of the XModem server
         try:
             self.clear_extra_bytes()
@@ -460,6 +511,11 @@ class XModemConnector:
 
     def connect_to_server(self):
         import wx
+        # Home the calculator
+        self.sendCommand(b'E')
+        self.sendCommandPacket('HOME')
+        
+        if self.cancelled: return
         memory, objects = self.run_M_L()
         
         if self.cancelled: return
@@ -473,6 +529,8 @@ class XModemConnector:
         
         if self.cancelled: return
         print(memory, version, objects)
+
+
         if not self.cancelled:
             wx.CallAfter(
                 pub.sendMessage,
