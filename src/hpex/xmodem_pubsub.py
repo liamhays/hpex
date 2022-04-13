@@ -29,16 +29,15 @@ class XModemConnector:
 
     # fname is either a string (file to get or receive), or if command
     # == 'disconnect', a temporary file that contains the original path.
-    def run(self, port, parent, fname, command, short_timeout, current_path, ptopic,
+    def run(self, port, parent, fname, command, current_path, ptopic,
             use_callafter=True, alt_options=None): # ptopic for parent
         if use_callafter:
             # So this is kind of a kludge. We don't want to globally
             # import wx if we're running in the CLI, to keep it light
             # and fast, but we can't conditionally globally
             # import. However, we /can/ import wx in each and every
-            # function that needs it, _if and only if_
-            # self.use_callafter is true. This is because the only
-            # thing this class (and KermitConnector) uses wx for is
+            # function that needs it. This is because the only thing
+            # this class (and KermitConnector) uses wx for is
             # CallAfter, for thread-safety.
             import wx
             
@@ -48,23 +47,22 @@ class XModemConnector:
         self.parent = parent
         self.fname = fname
         self.command = command
+        self.current_path = current_path
         self.ptopic = ptopic
         self.use_callafter = use_callafter
-        self.current_path = current_path
+
         # this tells the receiver frame whether or not to update the
         # progress bar
         self.should_update = True
         # an actual cancelled variable
 
-        if short_timeout == True:
-            # if connected to XModem server, use shorter timeouts
-            self.ser_timeout = .5
-        else:
-            self.ser_timeout = 3
+        # connected to XModem server, so use shorter timeouts
+        self.ser_timeout = .5
+
             
         self.cancelled = False
-        if self.command == 'send_connect' or self.command == 'send':
-            print('send or send_connect, self.fname is', self.fname)
+        if self.command == 'send_connect':
+            print('send_connect, self.fname is', self.fname)
             print('cwd is', os.getcwd())
             # 128 bytes per XModem packet, and we round up.
             self.packet_count = math.ceil(
@@ -172,12 +170,27 @@ class XModemConnector:
                     pub.sendMessage(f'xmodem.failed.{self.ptopic}')
                 
             self.stream.close()
-        elif command == 'get_connect':
+        elif 'get_connect' in command:
+            # 'get_connect_overwrite' is passed by FileGetDialog, when
+            # the user specifies that they would like to overwrite
+            final_name = Path(self.current_path,fname)
+            original_name = final_name
+            
+            if command != 'get_connect_overwrite':
+                counter = 1
+                while final_name.exists():
+                    # this is to emulate the weird non-collision
+                    # filename that Kermit makes so that we don't need
+                    # multiple dialog messages
+                    final_name = Path(original_name.parent, original_name.name + '.~' + str(counter) + '~')
+                    counter += 1
+
+            print(final_name)
             try:
                 self.ser.flush()
                 self.sendCommand(b'G')
                 self.sendCommandPacket(fname)
-                self.stream = open(Path(self.current_path,fname), 'wb')
+                self.stream = final_name.open('wb')
                 # when receiving, success is zero on failure or bytes
                 # successfully sent. We just have to assume that
                 # non-zero is success
@@ -549,9 +562,6 @@ class XModemConnector:
                     success=success_count,
                     error=error_count)
 
-#            if self.delete_after_send:
-#                os.remove(self.fname)
-
         else:
 
             if self.use_callafter:
@@ -573,23 +583,7 @@ class XModemConnector:
                     error=error_count,
                     should_update=self.should_update)
 
-    def server_cancel(self):
+    def cancel(self):
         # cancel any current server operation
         self.cancelled = True
     
-    def cancel(self):
-        self.cancelled = True
-        self.should_update = False
-        self.modem.abort(timeout=2)
-
-        if self.use_callafter:
-            import wx
-            wx.CallAfter(
-                pub.sendMessage,
-                f'xmodem.cancelled.{self.ptopic}',
-                file_count=self.packet_count)
-
-        else:
-            pub.sendMessage(
-                f'xmodem.cancelled.{self.ptopic}',
-                file_count=self.packet_count)

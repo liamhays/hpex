@@ -11,6 +11,7 @@ from pubsub import pub
 if _system != 'Windows':
     from hpex.kermit_pubsub import KermitConnector
 from hpex.xmodem_pubsub import XModemConnector
+from hpex.xmodem_xsend_pubsub import XModemXSendConnector
 from hpex.dialogs import KermitErrorDialog, XModemErrorDialog
 from hpex.helpers import KermitProcessTools, XModemProcessTools
 from hpex.settings import HPexSettingsTools
@@ -22,6 +23,8 @@ from hpex.hp_variable import HPVariable
 # TODO: FileGetDialog needs to manage overwriting on the local side
 # with XModem, and probably follow the same scheme as Kermit so we
 # don't need multiple messages.
+
+# TODO: 'Run XRECV now' shouldn't be displayed if connected.
 class FileSendDialog(wx.Frame):
     def __init__(self, parent, file_message, port, filename,
                  file_already_exists=False, use_xmodem=False,
@@ -264,8 +267,9 @@ class FileSendDialog(wx.Frame):
             self.kermit.start()
 
         else:
-            self.xmodem_connector = XModemConnector()
+
             if self.parent.connected:
+                self.xmodem_connector = XModemConnector()
                 # send using 'P' command to XModem server
                 self.xmodem = threading.Thread(
                     target=self.xmodem_connector.run,
@@ -273,14 +277,22 @@ class FileSendDialog(wx.Frame):
                           self,
                           self.filename,
                           'send_connect',
-                          True, # short timeout because parent is connected
                           '', # current local path doesn't matter for sending
                           self.topic))
                 
+                self.reset_progress(' Negotiating...')
+                self.xmodem.start()
+            else:
+                self.xmodem_connector = XModemXSendConnector()
+                self.xmodem = threading.Thread(
+                    target=self.xmodem_connector.run,
+                    args=(self.port,
+                          self,
+                          self.filename,
+                          self.topic))
+                self.reset_progress(' Run XRECV now.')
                 self.xmodem.start()
                 
-                self.reset_progress(' Run XRECV now.')
-
         self.cancel_button.Enable()
         
     def cancel(self, event):
@@ -339,6 +351,7 @@ class FileGetDialog(wx.Frame):
 
         # check for the file in the current local directory, if it
         # exists, ask about overwriting
+        print(os.listdir(self.current_dir))
         ask = HPexSettingsTools.load_settings()['ask_for_overwrite']
         if ask:
             if filename in os.listdir(self.current_dir):
@@ -359,6 +372,7 @@ class FileGetDialog(wx.Frame):
                 # because the user could decide to stop the operation
                 elif self.result == wx.ID_CANCEL:
                     self.Destroy()
+                    return
         else:
             # if asking to overwrite has been disabled, HPex will not overwrite
             self.overwrite = False
@@ -453,17 +467,21 @@ class FileGetDialog(wx.Frame):
 
     def run_xmodem(self):
         print('run_xmodem')
+        print(f'self.filename is {self.filename}')
 
         self.xmodem_connector = XModemConnector()
+        if self.overwrite:
+            cmd = 'get_connect_overwrite'
+        else:
+            cmd = 'get_connect'
         # receive from XModem server can't be done without being
         # connected, so we don't need a check here.
         self.xmodem = threading.Thread(
-            target = self.xmodem_connector.run,
+            target=self.xmodem_connector.run,
             args=(self.port,
                   self,
                   self.filename,
-                  'get_connect',
-                  True, # short timeout
+                  cmd,
                   self.current_dir,
                   self.topic))
         self.xmodem.start()

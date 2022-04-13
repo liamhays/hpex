@@ -10,8 +10,7 @@ _system = platform.system()
 # TODO: XModem server ends when transfer cancelled or fails, probably need 'xmodem_disconnected' event.
 # TODO: disable connect button while connecting
 # TODO: issue with enabled/disabled status of "Not connected" text
-# TODO: XModem cancel in HPexGUI isn't cancelling XModem
-
+# TODO: make all "files" go to "variables" for HP stuff
 from pathlib import Path
 import os
 
@@ -588,7 +587,7 @@ class HPexGUI(wx.Frame):
         self.refresh_local_files()
         if self.connected:
             self.SetStatusText('Refreshing remote files...')
-            if self.xmodem:
+            if self.xmodem_mode:
                 self.save_hp_selection()
                 print('xmodem refresh')
                 # xmodem refresh
@@ -598,7 +597,6 @@ class HPexGUI(wx.Frame):
                           self,
                           '', # no filename here
                           'refresh',
-                          True,
                           self.current_local_path,
                           self.topic))
                 self.xmodem.start()
@@ -801,7 +799,7 @@ class HPexGUI(wx.Frame):
             self.kermit_connector = KermitConnector()
             self.kermit = threading.Thread(
                 target=self.kermit_connector.run,
-                args=(StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())),
+                args=(StringTools.trim_serial_port(self.serial_port_box.GetValue()),
                       self,
                       'remote host ' + f'{varname}' + ' EVAL',
                       self.topic,
@@ -1036,7 +1034,7 @@ class HPexGUI(wx.Frame):
                            '.')
 
     def xmodem_refreshdone(self, mem, varlist):
-        if not self.connected:
+        if self.connected:
             self.SetStatusText('Updated remote variables.')
         print('refreshdone')
         self.hpvars = varlist
@@ -1235,7 +1233,6 @@ class HPexGUI(wx.Frame):
                           self,
                           '', # no filename here
                           'connect',
-                          True,
                           self.current_local_path,
                           self.topic))
                 self.xmodem.start()
@@ -1277,7 +1274,6 @@ class HPexGUI(wx.Frame):
                           self,
                           self.pathfile,
                           'disconnect',
-                          True,
                           self.current_local_path,
                           self.topic))
                 self.xmodem.start()
