@@ -97,7 +97,52 @@ class KermitProcessTools:
     def checksum_to_hexstr(checksum):
         return '#' + str(hex(int(checksum))).replace('0x', '').upper() + 'h'
 
-    
+
+    @staticmethod
+    def type_remove_spaces(s: str) -> str:
+        # There are many more names on the HP 49.
+        replace_table = {
+            'System Binary': 'SystemBinary',
+            'Real Number': 'RealNumber',
+            'Long Real': 'LongReal',
+            'Complex Number': 'ComplexNumber',
+            'Long Complex': 'LongComplex',
+            'Linked Array': 'LinkedArray',
+            'Binary Integer': 'BinaryInteger',
+            'Library Data': 'LibraryData',
+            'Global Name': 'GlobalName',
+            'Local Name': 'LocalName',
+            'Real Array': 'RealArray',
+            'XLIB Name': 'XLIBName'
+        }
+
+        for key in replace_table:
+            s = s.replace(key, replace_table[key])
+
+        return s
+
+    @staticmethod
+    def type_add_spaces(s: str) -> str:
+        # undo what type_remove_spaces() does
+        replace_table = {
+            'SystemBinary': 'System Binary',
+            'RealNumber': 'Real Number',
+            'LongReal': 'Long Real',
+            'ComplexNumber': 'Complex Number',
+            'LongComplex': 'Long Complex',
+            'LinkedArray': 'Linked Array',
+            'BinaryInteger': 'Binary Integer',
+            'LibraryData': 'Library Data',
+            'GlobalName': 'Global Name',
+            'LocalName': 'Local Name',
+            'RealArray': 'Real Array',
+            'XLIBName': 'XLIB Name'
+        }
+
+        for key in replace_table:
+            s = s.replace(key, replace_table[key])
+
+        return s
 
     
 class XModemProcessTools:
@@ -162,6 +207,40 @@ class XModemProcessTools:
                 final_name += chr(b)
 
         return final_name
+
+    @staticmethod
+    def prolog_to_type(prolog: int) -> str:
+        # taken from derek.int on hpcalc.org
+        conversion_table = {
+            0x2911: 'System Binary',
+            0x2933: 'Real Number',
+            0x2955: 'Long Real',
+            0x2977: 'Complex Number',
+            0x299D: 'Long Complex',
+            0x29BF: 'Character',
+            0x29E8: 'Array',
+            0x2A0A: 'Linked Array',
+            0x2A2C: 'String', 
+            0x2A4E: 'Binary Integer',
+            0x2A74: 'List',
+            0x2A96: 'Directory',
+            0x2AB8: 'Algebraic',
+            0x2ADA: 'Unit',
+            0x2AFC: 'Tagged',
+            0x2B1E: 'Graphic',
+            0x2B40: 'Library',
+            0x2B62: 'Backup',
+            0x2B88: 'Library Data',
+            0x2D9D: 'Pragram',
+            0x2DCC: 'Code',
+            0x2E48: 'Global Name',
+            0x2E6D: 'Local Name',
+            0x2E92: 'XLIB Name'
+        }
+        if prolog not in conversion_table.keys():
+            return '?'
+        return conversion_table[prolog]
+    
 class FileTools:
     @staticmethod
     def home_to_tilde(p):

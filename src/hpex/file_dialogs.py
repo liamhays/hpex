@@ -20,11 +20,6 @@ from hpex.hp_variable import HPVariable
 # Because the GUI is drag and drop-based, the transfer dialogs start a
 # transfer on initialization.
 
-# TODO: FileGetDialog needs to manage overwriting on the local side
-# with XModem, and probably follow the same scheme as Kermit so we
-# don't need multiple messages.
-
-# TODO: 'Run XRECV now' shouldn't be displayed if connected.
 class FileSendDialog(wx.Frame):
     def __init__(self, parent, file_message, port, filename,
                  file_already_exists=False, use_xmodem=False,
@@ -347,11 +342,11 @@ class FileGetDialog(wx.Frame):
 
         self.topic = 'FileGetDialog'
         self.overwrite = False
-        #print(os.listdir(self.current_dir))
+
 
         # check for the file in the current local directory, if it
         # exists, ask about overwriting
-        print(os.listdir(self.current_dir))
+
         ask = HPexSettingsTools.load_settings()['ask_for_overwrite']
         if ask:
             if filename in os.listdir(self.current_dir):

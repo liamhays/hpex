@@ -17,6 +17,7 @@ from hpex.helpers import KermitProcessTools, XModemProcessTools # needed for che
 
 # TODO: test what the output of Conn4x gives---do the received files
 # have the extra \x00 bytes at the end?
+
 ACK = b'\x06'
 class XModemConnector:
     def getc(self, size, timeout=.1):
@@ -430,7 +431,7 @@ class XModemConnector:
             index += lsize
             
             prologstr = l[index:index + 2]
-            prolog = hex(prologstr[1] * 256 + prologstr[0])
+            prolog = prologstr[1] * 256 + prologstr[0]
             index += 2
             
             # object size is 3 bytes, which encode the size of the
@@ -444,9 +445,10 @@ class XModemConnector:
             objcrc = l[index:index + 2]
             crc = objcrc[1] * 256 + objcrc[0]
             index += 2
-
+            
             objects.append(HPVariable(XModemProcessTools.bytes_to_utf8(name),
-                                      str(size), str(prolog),
+                                      str(size),
+                                      XModemProcessTools.prolog_to_type(prolog),
                                       KermitProcessTools.checksum_to_hexstr(crc)))
 
         return memory, objects

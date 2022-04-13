@@ -512,7 +512,7 @@ class HPexGUI(wx.Frame):
         # A much easier method is to transfer the selected item index,
         # since that isn't going to change. This also means that we
         # don't have to search based on variable name later on.
-        data = wx.TextDataObject(str(sel_index))#varname)
+        data = wx.TextDataObject(str(sel_index))
         drop_source = wx.DropSource(self.hp_files)
         drop_source.SetData(data)
         drop_source.DoDragDrop(True)
@@ -528,7 +528,6 @@ class HPexGUI(wx.Frame):
         self.hp_dir_label.SetLabelText('Not connected')
         # keep self.hp_files enabled
         self.hp_home_button.Disable()
-        self.hp_dir_label.Disable()
         self.hp_updir_button.Disable()
 
         # except for these, which we re-enable
@@ -873,7 +872,7 @@ class HPexGUI(wx.Frame):
         var = self.hpvars[index]
 
         self.SetStatusText(f"Transferring '{var.name}' from calculator...")
-        msg = f"You have chosen to transfer '{var.name}' from the HP48 at " + StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + '.'
+        msg = f"You have chosen to transfer '{var.name}' from the HP48 at " + StringTools.trim_serial_port(self.serial_port_box.GetValue()) + '.'
         filestats = f'Size: {var.size}\nType: {var.vtype}\nChecksum: {var.crc}'
 
 
@@ -913,16 +912,10 @@ class HPexGUI(wx.Frame):
             # each element of each row is the name, size, type, and
             # crc in that order
             
-            # undo the thing we did in kermit_done()
-            t = i[2]
-            if t == 'RealNumber':
-                t = 'Real Number'
-            elif t == 'GlobalName':
-                t = 'Global Name'
-                
             self.hpvars.append(
                 HPVariable(name=i[0],
-                           size=i[1], vtype=t,
+                           size=i[1],
+                           vtype=KermitProcessTools.type_add_spaces(i[2]),
                            crc=KermitProcessTools.checksum_to_hexstr(i[3])))
 
         
@@ -1034,8 +1027,6 @@ class HPexGUI(wx.Frame):
                            '.')
 
     def xmodem_refreshdone(self, mem, varlist):
-        if self.connected:
-            self.SetStatusText('Updated remote variables.')
         print('refreshdone')
         self.hpvars = varlist
         self.populate_hp_listbox()
@@ -1043,7 +1034,9 @@ class HPexGUI(wx.Frame):
         self.memfree = mem
         print('self.memfree', self.memfree)
         self.hp_dir_label.SetLabelText(f'PATH TODO  {self.memfree} bytes free')
-        
+        if self.connected:
+            self.SetStatusText('Updated remote variables.')
+            
     def xmodem_done(self):
         print('xmodem done')
         
@@ -1095,7 +1088,7 @@ class HPexGUI(wx.Frame):
         self.connected = False # also just in case
         self.SetStatusText(
             "Kermit couldn't reach " +
-            StringTools.trim_serial_port(StringTools.trim_serial_port(self.serial_port_box.GetValue())) + '.')
+            StringTools.trim_serial_port(self.serial_port_box.GetValue()) + '.')
 
 
         # we must restore the drop targets here, because a failure
@@ -1135,15 +1128,13 @@ class HPexGUI(wx.Frame):
                 self.connecting_dialog.Close()
                 
 
-            # Real Number is two words, so it breaks a .split(' '). We
-            # replace here and fix again later.
-            
-            # I think these are the only two-word types on the HP
-            # 48. However, the Meta Kernel HPs have many more types. I
-            # really need to get an HP 49.
-            out = out.replace('Real Number', 'RealNumber')
-            out = out.replace('Global Name', 'GlobalName')
-            
+            # These are all two words, so it breaks a .split(' '). We
+            # replace here and fix again later. I found them with a
+            # simple `strings gxrom-r`, and I believe they are the
+            # only two-word names on the HP 48. There are surely more
+            # on the HP 49.
+
+            out = KermitProcessTools.type_remove_spaces(out)
 
             out = KermitProcessTools.remove_kermit_warnings(
                 out.splitlines())
