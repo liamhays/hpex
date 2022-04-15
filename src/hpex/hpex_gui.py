@@ -3,10 +3,9 @@ import platform
 import inspect
 _system = platform.system()
 
-# TODO: disable connect button while connecting: urGENT
-# TODO: issue with enabled/disabled status of "Not connected" text
-# TODO: make all "files" go to "variables" for HP stuff
-# TODO: UPDIR disabled if remote path is HOME
+# TODO: statusbar is basically broken
+# TODO: redo the CLI
+
 from pathlib import Path
 import os
 
@@ -25,7 +24,6 @@ from hpex.settings import HPexSettingsTools
 from hpex.settings_frame import SettingsFrame
 from hpex.hp_variable import HPVariable
 
-# These have to spawn a progress window and start the file transfer
 class HPTextDropTarget(wx.TextDropTarget):
     def __init__(self, window):
         wx.TextDropTarget.__init__(self)
@@ -40,8 +38,6 @@ class HPTextDropTarget(wx.TextDropTarget):
             path=data)
         return True
 
-# here, we have to transfer a HPVariable object, so we extend
-# wx.DropTarget
 class LocalTextDropTarget(wx.TextDropTarget):
     def __init__(self, window):
         wx.TextDropTarget.__init__(self)
@@ -113,7 +109,7 @@ class HPexGUI(wx.Frame):
             wx.EVT_MENU, self.send_menu_callback, self.send_menuitem)
         
         self.get_menuitem = self.file_menu.Append(
-            wx.ID_ANY, '&Get selected remote file\tCtrl+G', '')
+            wx.ID_ANY, '&Get selected remote variable\tCtrl+G', '')
 
         self.Bind(
             wx.EVT_MENU, self.get_menu_callback, self.get_menuitem)
@@ -321,9 +317,6 @@ class HPexGUI(wx.Frame):
         self.hp_dir_button_sizer.Add(
             self.hp_updir_button, 1, wx.EXPAND | wx.ALL)
 
-        self.local_updir.Bind(wx.EVT_BUTTON, self.local_move_up)
-
-
         self.hp_sizer.Add(
             self.hp_dir_button_sizer, 0, wx.EXPAND | wx.ALL)
         self.hp_sizer.Add(self.hp_dir_label, 0, wx.EXPAND | wx.ALL)
@@ -422,6 +415,10 @@ class HPexGUI(wx.Frame):
     def local_move_up(self, event):
         self.current_local_path = Path(self.current_local_path).parent
 
+        # the only time this condition will be met is when we are at
+        # the filesystem root
+        if len(self.current_local_path.parts) == 1:
+            print('equal')
         # We want to update the path as quickly as possible, because
         # the dirpicker will say "None" for a short while if we
         # don't. I'm not fully sure how this happens, but it can.
@@ -478,7 +475,6 @@ class HPexGUI(wx.Frame):
                       self.topic))
             self.xmodem.start()
         else:
-            # TODO: does this need new_remote_path?
             self.kermit_connector = KermitConnector()
             
             self.kermit = threading.Thread(
@@ -574,7 +570,8 @@ class HPexGUI(wx.Frame):
         self.hp_updir_button.Enable()
         self.hp_dir_label.Enable()
         self.hp_files.Enable()
-        self.run_hp_command_item.Enable(True)
+        if not self.xmodem_mode:
+            self.run_hp_command_item.Enable(True)
         
     def set_xmodem_ui_layout(self, event):
         # A connection check isn't really necessary, but it's a good
@@ -615,7 +612,7 @@ class HPexGUI(wx.Frame):
         print(inspect.getouterframes(c, 2)[1][3])
         self.refresh_local_files()
         if self.connected:
-            self.SetStatusText('Refreshing remote files...')
+            self.SetStatusText('Refreshing remote variables...')
             if self.xmodem_mode:
                 self.save_hp_selection()
                 print('xmodem refresh')
@@ -874,6 +871,22 @@ class HPexGUI(wx.Frame):
     def transfer_to_hp(self, path):
         if self.empty_port_box_warning():
             return
+        filename = Path(path)
+        
+        # In XModem mode, sending a zero-length file works, but it
+        # never sends any progress packets, so the dialog never
+        # closes. A dialog box is not a great way to stop this, but it
+        # helps.
+        if self.xmodem_mode:
+            s = os.path.getsize(path)
+            if s == 0:
+                wx.MessageDialog(
+                    self,
+                    f'{filename.name} is 0 bytes long and cannot be sent. Sending 0 byte files via XModem does not work because the transfer appears to never finish.',
+                    'Zero-length file',
+                    wx.OK | wx.ICON_EXCLAMATION).ShowModal()
+                return
+            
         print('start_hp_transfer, path is', path)
         # path is the file to send
         
@@ -882,7 +895,7 @@ class HPexGUI(wx.Frame):
         # as self.hp_files is disabled, we don't need that because the
         # drag and drop interface provides that feedback.
 
-        filename = Path(path)
+
         
         
         # if self.hpvars is not defined yet, this will go
@@ -949,6 +962,15 @@ class HPexGUI(wx.Frame):
             self,
             StringTools.trim_serial_port(self.serial_port_box.GetValue())).go()
 
+    def hp_path_to_str(self) -> str:
+        # convert self.hp_path to a { HOME ... } string.
+        s = '{ '
+        for i in self.hp_path:
+            s += i
+            s += ' '
+        s += '}'
+        return s
+    
     def process_kermit_data(self, output):
         # This function takes the output from Kermit, splits by lines
         # and finds each row (removing the one with the path and
@@ -1003,7 +1025,9 @@ class HPexGUI(wx.Frame):
         return False
 
 
-    def xmodem_connectdone(self, mem, server_verstring, pathfile, varlist):
+    def xmodem_connectdone(self, mem, pathfile, varlist):
+        # re-enable the connect button because now it disconnects
+        self.connect_button.Enable()
         # None is returned if pathfile is not generated (or if it
         # fails, I suppose, but that should already be handled by the
         # error handler). It wouldn't be generated in the event that
@@ -1017,15 +1041,11 @@ class HPexGUI(wx.Frame):
         # hp_path is a list which is converted to HP list notation. we
         # only need this for XModem server mode.
         self.hp_path = ['HOME']
-        # TODO: will eventually need to save selected item like
-        # Kermit...this feels like it's probably old TODO
 
-        # Extract the server version---which probably never changes,
-        # but it's still cool to have.
-        self.SetStatusText('Connected to XModem server version ' +
-                           server_verstring.split()[2] + ' on ' +
+        self.SetStatusText('Connected to XModem server on ' +
                            StringTools.trim_serial_port(
                                self.serial_port_box.GetValue()) + '.')
+
         # this should move to Mdone, or whatever the final success
         # command is
         if not self.connected:
@@ -1063,6 +1083,7 @@ class HPexGUI(wx.Frame):
         print('xmodem_failed, self.connected is', self.connected)
 
     def xmodem_transfercancelled(self):
+        print('transfer cancelled')
         # When a transfer is cancelled, the XModem server quits, so we
         # emulate a disconnect
         self.disable_on_disconnect()
@@ -1087,7 +1108,14 @@ class HPexGUI(wx.Frame):
         self.memfree = mem
         print('self.memfree', self.memfree)
         # HPex will always place the calculator in HOME, like Conn4x.
-        self.hp_dir_label.SetLabelText(f'{self.hp_path}  {self.memfree} bytes free')
+        real_path = self.hp_path_to_str()
+        self.hp_dir_label.SetLabelText(f'{real_path}  {self.memfree} bytes free')
+        if len(self.hp_path) == 1 and self.hp_path[0] == 'HOME':
+            # current path is { HOME }
+            self.hp_updir_button.Disable()
+        else:
+            self.hp_updir_button.Enable()
+            
         if self.connected:
             self.SetStatusText('Updated remote variables.')
             
@@ -1181,9 +1209,12 @@ class HPexGUI(wx.Frame):
         
         elif cmd == 'remote directory':
             if not self.connected:
+                self.connect_button.Enable()
                 print('first connect')
                 self.connecting_dialog.Close()
-                
+                self.connect_button.SetLabel('Disconnect')
+                self.enable_on_connect()
+                self.connected = True                
 
             # These are all two words, so it breaks a .split(' '). We
             # replace here and fix again later. I found them with a
@@ -1206,14 +1237,24 @@ class HPexGUI(wx.Frame):
                         hp_sel_index).GetText()
                 else:
                     self.hp_selection = None
-            #print(out)
+
             # read these again to be processed
             self.hp_dir, self.memfree = KermitProcessTools.process_kermit_header(out)
+            print(self.hp_dir)
             # update self.hpvars and the header above self.hp_files
             self.process_kermit_data(out)
             self.hp_dir_label.SetLabelText(
                 f'{self.hp_dir}  {self.memfree} bytes free')
+
+            # this must stay below enable_on_connect()
             
+            # also, not sure why, but this works best if it's put here
+            if self.hp_dir == '{ HOME }':
+                print('disable')
+                self.hp_updir_button.Disable()
+            else:
+                print('enable')
+                self.hp_updir_button.Enable()
             # special things if we're already connected, that
             # means the user did a refresh or changed remote
             # directory
@@ -1236,10 +1277,9 @@ class HPexGUI(wx.Frame):
                 print('connected')
 
                 
-            self.connect_button.SetLabel('Disconnect')
-            self.enable_on_connect()
-            self.connected = True
-                            
+
+
+
             # don't disable connect_button here!
             # now, we can sort out Kermit's output and put it in
             # the list
@@ -1253,6 +1293,8 @@ class HPexGUI(wx.Frame):
             
 
     def connect_callback(self, event):
+        # disable to prevent double-clicking
+        self.connect_button.Disable()
         # This function is responsible for both connecting and
         # disconnecting. If we're connected, we disconnect, and if
         # we're disconnected, we connect.
@@ -1366,13 +1408,6 @@ class HPexGUI(wx.Frame):
         
             
     def close(self, event):
-        if self.connected:
-            # there's no reason to go through the whole process of
-            # loading and reading the file if we aren't connected
-            if HPexSettingsTools.load_settings()['disconnect_on_close']:
-                # disconnect because we're now connected
-                self.connect_callback(event=None)
-            
         # If Kermit fails here, HPex will stop for a short moment
         # until Kermit gives up. I don't think this is an issue.
         self.Destroy()

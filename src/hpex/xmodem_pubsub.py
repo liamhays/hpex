@@ -12,9 +12,6 @@ from hpex.settings import HPexSettingsTools
 from hpex.hp_variable import HPVariable
 from hpex.helpers import KermitProcessTools, XModemProcessTools # needed for checksum_to_hexstr
 
-# TODO: when connecting, the statusbar should be updated (because it
-# can be slow)---unless the above todo makes this irrelevant
-
 # TODO: test what the output of Conn4x gives---do the received files
 # have the extra \x00 bytes at the end?
 
@@ -63,6 +60,18 @@ class XModemConnector:
             
         self.cancelled = False
         if self.command == 'send_connect':
+            # The issue with sending a zero-length file is that the
+            # modem never calls the callback function.
+            # This leaves us with a couple options:
+            #  - Use a time-delay if length is 0 after opening the
+            #    sending dialog and just close, because the send
+            #    is successful
+            #    But what if the send fails?
+            #  - Prevent sending zero-length file with XModem.
+            #    This would be easy to implement but it is an
+            #    annoying arbitrary restriction.
+            #    An explanation would soften it though.
+            
             print('send_connect, self.fname is', self.fname)
             print('cwd is', os.getcwd())
             # 128 bytes per XModem packet, and we round up.
@@ -156,9 +165,11 @@ class XModemConnector:
                 if self.use_callafter:
                     wx.CallAfter(
                         pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}')
+                        f'xmodem.failed.{self.ptopic}',
+                        cmd='')
                 else:
-                    pub.sendMessage(f'xmodem.failed.{self.ptopic}')
+                    pub.sendMessage(f'xmodem.failed.{self.ptopic}',
+                                    cmd='')
                 
                 self.stream.close()
             
@@ -169,9 +180,11 @@ class XModemConnector:
                 if self.use_callafter:
                     wx.CallAfter(
                         pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}')
+                        f'xmodem.failed.{self.ptopic}',
+                        cmd='')
                 else:
-                    pub.sendMessage(f'xmodem.failed.{self.ptopic}')
+                    pub.sendMessage(f'xmodem.failed.{self.ptopic}',
+                                    cmd='')
                 
             self.stream.close()
         elif 'get_connect' in command:
@@ -189,7 +202,6 @@ class XModemConnector:
                     final_name = Path(original_name.parent, original_name.name + '.~' + str(counter) + '~')
                     counter += 1
 
-            print(final_name)
             try:
                 self.ser.flush()
                 self.sendCommand(b'G')
@@ -199,28 +211,38 @@ class XModemConnector:
                 # successfully sent. We just have to assume that
                 # non-zero is success
                 self.success = self.modem.recv(
-                    self.stream, retry=9, timeout=1,
-                    quiet=False)
+                    self.stream, retry=9, timeout=self.ser_timeout,
+                    quiet=True)
                 if self.use_callafter:
                     wx.CallAfter(
                         pub.sendMessage,
-                        f'xmodem.done.{self.ptopic}')                
+                        f'xmodem.done.{self.ptopic}',
+                        file_count=0,
+                        total=0,
+                        success=0,
+                        error=0)                
                 else:
                     pub.sendMessage(
-                        f'xmodem.done.{self.ptopic}')
+                        f'xmodem.done.{self.ptopic}',
+                        file_count=0,
+                        total=0,
+                        success=0,
+                        error=0)
 
-                print('after modem.recv')
-            except:
+            except Exception as e:
+                #print(e)
                 # we probably won't get here, but if we do, we still can
                 # throw an error in the calling dialog
-                print('xmodem failed at modem recv')
+                #print('xmodem failed at modem recv')
                 
                 if self.use_callafter:
                     wx.CallAfter(
                         pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}')
+                        f'xmodem.failed.{self.ptopic}',
+                        cmd='')
                 else:
-                    pub.sendMessage(f'xmodem.failed.{self.ptopic}')
+                    pub.sendMessage(f'xmodem.failed.{self.ptopic}',
+                                    cmd='')
                 
                 self.stream.close()
             
@@ -231,9 +253,11 @@ class XModemConnector:
                 if self.use_callafter:
                     wx.CallAfter(
                         pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}')
+                        f'xmodem.failed.{self.ptopic}',
+                        cmd='')
                 else:
-                    pub.sendMessage(f'xmodem.failed.{self.ptopic}')
+                    pub.sendMessage(f'xmodem.failed.{self.ptopic}',
+                                    cmd='')
                 
             self.stream.close()
 
@@ -246,7 +270,8 @@ class XModemConnector:
             except:
                 wx.CallAfter(
                     pub.sendMessage,
-                    f'xmodem.failed.{self.ptopic}')
+                    f'xmodem.failed.{self.ptopic}',
+                    cmd='')
                 return
 
             if not self.cancelled:
@@ -261,7 +286,8 @@ class XModemConnector:
             except:
                 wx.CallAfter(
                     pub.sendMessage,
-                    f'xmodem.failed.{self.ptopic}')
+                    f'xmodem.failed.{self.ptopic}',
+                    cmd='')
                 return
             
             if not self.cancelled:
@@ -276,7 +302,8 @@ class XModemConnector:
             except:
                 wx.CallAfter(
                     pub.sendMessage,
-                    f'xmodem.failed.{self.ptopic}')
+                    f'xmodem.failed.{self.ptopic}',
+                    cmd='')
                 return
 
             if not self.cancelled:
@@ -381,24 +408,6 @@ class XModemConnector:
             r = self.ser.read()
 
 
-
-        
-    def run_V(self):
-        # Now get the version of the XModem server
-        try:
-            self.clear_extra_bytes()
-            self.sendCommand(b'V')
-            version = self.getCommandPacket()
-            print('version', version)
-            self.clear_extra_bytes()
-        except:
-            self.failure()
-            return None
-
-        # don't need a special 'if version == None' here because
-        # there's only one return value
-        return version
-
     def get_hp_path(self):
         tmp = tempfile.TemporaryFile()
         try:
@@ -410,7 +419,7 @@ class XModemConnector:
             self.sendCommandPacket('$$$p')
             self.success = self.modem.recv(
                 tmp, retry=9, timeout=1,
-                quiet=False)
+                quiet=True)
             if self.success:
                 self.clear_extra_bytes()
                 self.sendCommand(b'E')
@@ -525,10 +534,7 @@ class XModemConnector:
         else:
             pathfile = None
             
-        version = self.run_V()
-        
-        if self.cancelled: return
-        print(memory, version, objects)
+        print(memory, objects)
 
 
         if not self.cancelled:
@@ -536,7 +542,6 @@ class XModemConnector:
                 pub.sendMessage,
                 f'xmodem.connectdone.{self.ptopic}',
                 mem=int(memory),
-                server_verstring=version.decode('utf-8'),
                 pathfile=pathfile,
                 varlist=objects)
 
@@ -605,9 +610,10 @@ class XModemConnector:
             f'xmodem.disconnectdone.{self.ptopic}')
         
     def callback(self, total_packets, success_count, error_count):
+        print(total_packets, success_count, error_count)
         if self.use_callafter:
             import wx
-        #print(total_packets, success_count)
+        print(total_packets, success_count, error_count)
         if success_count == self.packet_count: # done
 
             if self.use_callafter:

@@ -165,7 +165,6 @@ class KermitConnector:
                             cmd=self.command)
 
             except (OSError, IOError, EOFError) as err:
-                print('finished or failed, err:', err)
                 break
             
         returncode = self.proc.wait()

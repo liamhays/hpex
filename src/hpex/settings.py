@@ -76,7 +76,6 @@ class HPexSettingsTools:
             'parity': '0 (None)',
             'kermit_cksum': '3',
             'disable_pty_search': False,
-            'disconnect_on_close': False,
             'reset_directory_on_disconnect': True,
             'ask_for_overwrite': True,
             'start_in_xmodem': False

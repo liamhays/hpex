@@ -377,7 +377,7 @@ class FileTools:
         On Windows, it simply returns the first USB COM port found.
         """
 
-        return '/dev/pts/3'
+        return '/dev/pts/1'
         if _system == 'Windows':
             if parent != None:
                 parent.SetStatusText('Searching for COM ports...')

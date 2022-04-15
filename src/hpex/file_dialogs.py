@@ -171,21 +171,22 @@ class FileSendDialog(wx.Frame):
         XModemErrorDialog(
             self,
             f"HPex couldn't access {self.port}. Is it present? Try rescanning and trying to send the file again.",
-            # then, reset the progress bar so that we're not confusing
-            # the user.
-            lambda: self.reset_progress('')).Show(True)
+            lambda: self.on_close(event=None)).Show(True)
         
-    def xmodem_failed(self):
+    def xmodem_failed(self, cmd):
         print('FileSendDialog: xmodem failed')
         self.parent.SetStatusText(
-            f'XModem failed to write to {self.port}.')
+            f'XModem failed to write to {self.port}. Calculator is now disconnected.')
         self.cancel_button.Disable()
+        wx.CallAfter(
+            pub.sendMessage,
+            f'xmodem.transfercancelled.{self.ptopic}')
         XModemErrorDialog(
             self,
             f"XModem couldn't write to the HP48 at {self.port}. Check the calculator for any error messages, and verify your setup.",
             # same here
-            lambda: self.reset_progress('')).Show(True)
-        
+            lambda: self.on_close(event=None)).Show(True)
+
         
     def xmodem_done(self, file_count, total, success, error):
         self.parent.SetStatusText(
@@ -201,7 +202,7 @@ class FileSendDialog(wx.Frame):
     def xmodem_cancelled(self):
         self.reset_progress(' XModem transfer cancelled.')
         self.parent.SetStatusText(
-            f'XModem file copy to {self.port} cancelled.')
+            f'XModem file copy to {self.port} cancelled. Calculator is now disconnected.')
 
         # When an XModem transfer to the calculator server is
         # cancelled, the XModem server exits. We have a simple event
@@ -497,6 +498,9 @@ class FileGetDialog(wx.Frame):
         print('FileGetDialog: xmodem_failed')
         self.parent.SetStatusText(f'XModem failed to transfer {self.filename} from {self.port}')
         self.cancel_button.Disable()
+        wx.CallAfter(
+            pub.sendMessage,
+            f'xmodem.transfercancelled.{self.ptopic}')
         XModemErrorDialog(
             parent=self,
             boxmessage=f'XModem could not transfer {self.filename} from the server at {self.port}',

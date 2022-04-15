@@ -1,5 +1,6 @@
 import sys
 import platform
+import logging
 
 _system = platform.system()
 
@@ -9,21 +10,29 @@ class HPex(object):
     # parses them and sends them to HPexCLI. Without arguments, it
     # calls HPexGUI and runs from there.
     def __init__(self):
+        # Disable logging from the xmodem package.
+        logging.disable()
         if len(sys.argv) > 1:
-            # user passed command-line arguments, figure out what they
-            # are
-
-            # import argparse later, and only if needed, because we
-            # want to make this as fast as possible to start from the
-            # command line.
+            # import argparse later and only if needed
             import argparse
-            # no Kermit on Windows, so string varies depending on OS
+            desc = \
+            """Transfer file to calculator. If a serial port is not specified, HPex will try to find one automatically.
+
+Commands:
+ksend       send FILE to Kermit server
+kget        get FILE from Kermit server and place in current directory
+xsend       send FILE to XRECV on calculator
+xsrv_send   send FILE to XModem server
+xsrv_get    get FILE from XModem server"""
+            
+            # RawHelpTextFormatter https://stackoverflow.com/a/3853776
+            parser = argparse.ArgumentParser(description=desc, formatter_class=argparse.RawTextHelpFormatter)
+
             if _system == 'Windows':
-                desc = 'Transfer file to calculator using XModem. If a serial port is not specified, HPex will try to find one automatically.'
+                parser.add_argument('command', metavar='COMMAND', nargs=1, help="Task to run, one of 'xsend', 'xsrv_send', or 'xsrv_get'.")
             else:
-                desc = 'Transfer file to calculator, using XModem or Kermit (default Kermit). If a serial port is not specified, HPex will try to find one automatically.'
-            parser = argparse.ArgumentParser(
-                description=desc)
+                parser.add_argument('command', metavar='COMMAND', nargs=1, help="Task to run, one of 'ksend', 'kget', 'xsend', 'xsrv_send', or 'xsrv_get'.")
+
             
             parser.add_argument(
                 'input_file', metavar='FILE',
@@ -37,46 +46,19 @@ class HPex(object):
                 help='Baud rate for port (default 9600)')
 
             parser.add_argument(
-                '-r', '--parity',
-                help='Parity to use: one of 0 (none, default), 1 (odd), 2 (even), 3 (mark), or 4 (space)')
-
-            parser.add_argument(
                 '-i', '--info',
                 action='store_true',
                 help='Run HP object info check on FILE instead of sending it')
 
-            if _system != 'Windows':
-                parser.add_argument(
-                    '-x', '--xmodem',
-                    action='store_true',
-                    help="Use XModem instead of Kermit, only available for sending files")
-
-                parser.add_argument(
-                    '-d', '--finish',
-                    action='store_true',
-                help='Finish remote server after transfer in Kermit mode')
-
-                parser.add_argument(
-                    '-g', '--get',
-                    action='store_true',
-                    help='Get file (must be single name, no path) from server')
-                
-                parser.add_argument(
-                    '-c', '--cksum',
-                    help='Kermit block check: one of 1, 2, or 3 (default); applicable only in Kermit mode')
-
-                parser.add_argument(
-                    '-f', '--filemode',
-                    help="Kermit file mode: one of 'auto', 'binary', or 'ascii'")
-                
-                parser.add_argument(
-                    '-a', '--asname',
-                    nargs=1, help='Name to rename file as on calculator, when sending with Kermit')
-
-                parser.add_argument(
-                    '-o', '--overwrite',
-                    action='store_true',
-                    help='Overwrite file on local side')
+            parser.add_argument(
+                '-f', '--finish',
+                action='store_true',
+                help='End remote Kermit or XModem server after sending or receiving file')
+            
+            parser.add_argument(
+                '-o', '--overwrite',
+                action='store_true',
+                help='Overwrite file if it already exists on local side')
             
             from hpex.hpex_cli import HPexCLI
             #print(sys.modules.keys())

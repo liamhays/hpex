@@ -54,7 +54,7 @@ class XModemXSendConnector:
 
         self.ser_timeout = 3
             
-        #self.cancelled = False
+        self.cancelled = False
 
         # 128 bytes per XModem packet, and we round up.
         self.packet_count = math.ceil(
@@ -99,7 +99,7 @@ class XModemXSendConnector:
                     f'xmodem.serial_port_error.{self.ptopic}')
                 
             return
-        print('sending file')
+
         # send_connect means that HPex is connected to the XModem server
         try:
             self.ser.flush()
@@ -132,8 +132,8 @@ class XModemXSendConnector:
                 
                 return
 
-        #if not self.success and not self.cancelled:
-        if not self.cancelled:
+        if not self.success and not self.cancelled:
+        #if not self.cancelled:
             #print('not self.success and not self.cancelled')
             if self.use_callafter:
                 wx.CallAfter(

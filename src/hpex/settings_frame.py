@@ -95,13 +95,6 @@ class SettingsFrame(wx.Frame):
                 self.kermit_cksum_choices.index(
                     self.current_settings['kermit_cksum']))
 
-            self.disconnect_on_close_check = wx.CheckBox(
-            self, wx.ID_ANY,
-            'Disconnect the calculator on close if connected')
-
-            self.disconnect_on_close_check.SetValue(
-                self.current_settings['disconnect_on_close'])
-
             self.reset_on_disconnect_check = wx.CheckBox(
                 self, wx.ID_ANY,
                 'Reset calculator directory on disconnect')
@@ -175,9 +168,6 @@ class SettingsFrame(wx.Frame):
             row += 1
 
         if _system != 'Windows':
-            self.main_sizer.Add(
-                self.disconnect_on_close_check, pos=(row, 0), span=(1, 2))
-            row += 1
             
             self.main_sizer.Add(
                 self.reset_on_disconnect_check, pos=(row, 0), span=(1, 2))
@@ -207,7 +197,6 @@ class SettingsFrame(wx.Frame):
             self.current_settings['start_in_xmodem'] = self.start_in_xmodem_check.GetValue()
             self.current_settings['file_mode'] = self.file_mode_choices[self.file_mode_choice.GetSelection()]
             self.current_settings['kermit_cksum'] = self.kermit_cksum_choices[self.kermit_cksum_choice.GetSelection()]
-            self.current_settings['disconnect_on_close'] = self.disconnect_on_close_check.GetValue()
             self.current_settings['reset_directory_on_disconnect'] = self.reset_on_disconnect_check.GetValue()
             self.current_settings['disable_pty_search'] = self.pty_search_check.GetValue()
             
