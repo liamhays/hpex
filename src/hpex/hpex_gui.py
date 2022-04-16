@@ -3,9 +3,10 @@ import platform
 import inspect
 _system = platform.system()
 
-# TODO: statusbar is basically broken
-# TODO: redo the CLI
-
+# TODO: failing to connect on Windows messes with the state of the radiobuttons
+# TODO: move from os.path calls to pathlib calls everywhere
+# TODO: add expanduser() calls to all pathlib calls for Windows
+# TODO: Some kind of logo, anything, for Windows
 from pathlib import Path
 import os
 
@@ -376,7 +377,6 @@ class HPexGUI(wx.Frame):
             self.xmodem_radiobutton.SetValue(True)
             self.kermit_radiobutton.Disable()
             self.xmodem_radiobutton.Disable()
-            self.hp_dir_label.SetLabelText('Kermit not available on Windows')
         else:
             # otherwise load setting and follow that
             xmodem = HPexSettingsTools.load_settings()['start_in_xmodem']
@@ -878,7 +878,7 @@ class HPexGUI(wx.Frame):
         # closes. A dialog box is not a great way to stop this, but it
         # helps.
         if self.xmodem_mode:
-            s = os.path.getsize(path)
+            s = filename.expanduser().stat().st_size
             if s == 0:
                 wx.MessageDialog(
                     self,
@@ -1305,7 +1305,10 @@ class HPexGUI(wx.Frame):
         if self.empty_port_box_warning():
             return
 
-        self.kermit_connector = KermitConnector()
+        if self.xmodem_mode:
+            self.xmodem_connector = XModemConnector()
+        else:
+            self.kermit_connector = KermitConnector()
         
         if not self.connected:
             self.SetStatusText('Connecting to calculator...')
@@ -1315,7 +1318,6 @@ class HPexGUI(wx.Frame):
                     'Make sure the XModem server is running on the calculator.',
                     'Connecting...')
                 
-                self.xmodem_connector = XModemConnector()
                 self.xmodem = threading.Thread(
                     target=self.xmodem_connector.run,
                     # trim...() has already been called on the serial port box's contents

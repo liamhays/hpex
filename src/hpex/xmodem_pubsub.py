@@ -18,11 +18,13 @@ from hpex.helpers import KermitProcessTools, XModemProcessTools # needed for che
 ACK = b'\x06'
 class XModemConnector:
     def getc(self, size, timeout=.1):
-        #print('getc')
-        return self.ser.read(size) or None
+        print('getc', size)
+        data = self.ser.read(size)
+        print('data', data)
+        return data# or None
                     
     def putc(self, data, timeout=.1):
-        #print('putc')
+        print('putc', data)
         return self.ser.write(data) or None
 
     # fname is either a string (file to get or receive), or if command
@@ -101,7 +103,9 @@ class XModemConnector:
         #print(baud)
         #print(parity)
         #print(settings['parity'])
-        # we aren't catching serial.serialutil.SerialExceptions
+        
+        # This is failing on Windows with an Access is Denied error
+        # (suggesting multiple access), but it only fails after an XModem
         try:
             self.ser = serial.Serial(
                 # short timeout so we get something like what Kermit
@@ -151,12 +155,12 @@ class XModemConnector:
                 self.ser.flush()
                 self.sendCommand(b'P')
                 self.sendCommandPacket(Path(fname).name)
-                self.stream = open(fname, 'rb')
+                self.stream = Path(fname).expanduser().open('rb')
                 # 6 retries: 4 for the weird 'D' thing, and 2 for good measure.
                 self.success = self.modem.send(
                     self.stream, retry=9, timeout=self.ser_timeout,
-                    quiet=True, callback=self.callback)
-                
+                    quiet=False, callback=self.callback)
+                self.stream.close()
             except:
                 # we probably won't get here, but if we do, we still can
                 # throw an error in the calling dialog
@@ -190,7 +194,7 @@ class XModemConnector:
         elif 'get_connect' in command:
             # 'get_connect_overwrite' is passed by FileGetDialog, when
             # the user specifies that they would like to overwrite
-            final_name = Path(self.current_path,fname)
+            final_name = Path(self.current_path,fname).expanduser()
             original_name = final_name
             
             if command != 'get_connect_overwrite':
@@ -199,7 +203,8 @@ class XModemConnector:
                     # this is to emulate the weird non-collision
                     # filename that Kermit makes so that we don't need
                     # multiple dialog messages
-                    final_name = Path(original_name.parent, original_name.name + '.~' + str(counter) + '~')
+                    final_name = Path(original_name.parent, original_name.name + '.~' + str(counter) + '~').expanduser()
+                    print(final_name)
                     counter += 1
 
             try:
@@ -212,8 +217,15 @@ class XModemConnector:
                 # non-zero is success
                 self.success = self.modem.recv(
                     self.stream, retry=9, timeout=self.ser_timeout,
-                    quiet=True)
-                if self.use_callafter:
+                    quiet=False)
+                # Since you can't stop the modem easily, we can cancel
+                # it on the other side.
+                # TODO: do we need to though?
+
+                # MUST CLOSE THE STREAM OR ELSE IT IS EMPTY ON LINUX
+                # and possibly Windows, but it's definitely platform-dependent
+                self.stream.close()
+                if self.use_callafter and not self.cancelled:
                     wx.CallAfter(
                         pub.sendMessage,
                         f'xmodem.done.{self.ptopic}',
@@ -230,7 +242,7 @@ class XModemConnector:
                         error=0)
 
             except Exception as e:
-                #print(e)
+                print(e)
                 # we probably won't get here, but if we do, we still can
                 # throw an error in the calling dialog
                 #print('xmodem failed at modem recv')
@@ -259,7 +271,6 @@ class XModemConnector:
                     pub.sendMessage(f'xmodem.failed.{self.ptopic}',
                                     cmd='')
                 
-            self.stream.close()
 
         elif command == 'chdir':
             # fname is the directory to change to
@@ -311,6 +322,7 @@ class XModemConnector:
                     pub.sendMessage,
                     f'xmodem.done.{self.ptopic}')
 
+        print('self.ser.close')
         self.ser.close()
 
     def checksumStr(self, s: str) -> int:

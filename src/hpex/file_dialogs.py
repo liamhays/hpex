@@ -4,7 +4,7 @@ import pathlib
 import platform
 
 _system = platform.system()
-
+# TODO: gray background thing
 import wx
 from pubsub import pub
 
@@ -359,8 +359,10 @@ class FileGetDialog(wx.Frame):
         # exists, ask about overwriting
 
         ask = HPexSettingsTools.load_settings()['ask_for_overwrite']
+        
         if ask:
-            if filename in os.listdir(self.current_dir):
+            # TODO: this is not working on Windows
+            if filename in self.current_dir.expanduser().iterdir():#os.listdir(self.current_dir):
                 # just let the user know, so that they know what will
                 # happen
                 self.result = wx.MessageDialog(
@@ -494,7 +496,9 @@ class FileGetDialog(wx.Frame):
 
         self.cancel_button.Enable()
 
-    def xmodem_failed(self):
+    def xmodem_failed(self, cmd):
+        # TODO: Do we need to cancel here?
+        #self.xmodem.cancel()
         print('FileGetDialog: xmodem_failed')
         self.parent.SetStatusText(f'XModem failed to transfer {self.filename} from {self.port}')
         self.cancel_button.Disable()
@@ -503,7 +507,7 @@ class FileGetDialog(wx.Frame):
             f'xmodem.transfercancelled.{self.ptopic}')
         XModemErrorDialog(
             parent=self,
-            boxmessage=f'XModem could not transfer {self.filename} from the server at {self.port}',
+            boxmessage=f'XModem could not transfer {self.filename} from the server at {self.port}.',
             close_func=self.on_close).Show(True)
         
     def serial_port_error(self):
@@ -520,7 +524,7 @@ class FileGetDialog(wx.Frame):
         self.on_close()
 
 
-    def xmodem_done(self):
+    def xmodem_done(self, file_count, total, success, error):
         print('FileGetDialog: xmodem_done')
         # only one way to receive, remember
         self.parent.SetStatusText(f"Successfully transferred '{self.filename}' from calculator.")
