@@ -361,10 +361,8 @@ class FileGetDialog(wx.Frame):
         ask = HPexSettingsTools.load_settings()['ask_for_overwrite']
         
         if ask:
-            # TODO: this is not working on Windows
-            if filename in self.current_dir.expanduser().iterdir():#os.listdir(self.current_dir):
-                # just let the user know, so that they know what will
-                # happen
+            # cross-platform way to test overwrite
+            if pathlib.Path(self.current_dir, filename).expanduser().is_file():
                 self.result = wx.MessageDialog(
                     self,
                     f"'{filename}' already exists in " +

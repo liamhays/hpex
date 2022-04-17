@@ -82,52 +82,61 @@ class XModemConnector:
 
 
         # assemble options for serial port
+        self.ser = serial.Serial()
+        self.ser.port = port
         if not alt_options:
             settings = HPexSettingsTools.load_settings()
         else:
             settings = alt_options
-        baud = settings['baud_rate']
-        parity = None
+        self.ser.baud = settings['baud_rate']
+
         if settings['parity'] == '0 (None)':
-            parity = serial.PARITY_NONE
+            self.ser.parity = serial.PARITY_NONE
         elif settings['parity'] == '1 (Odd)':
-            parity = serial.PARITY_ODD
+            self.ser.parity = serial.PARITY_ODD
         elif settings['parity'] == '2 (Even)':
-            parity = serial.PARITY_EVEN
+            self.ser.parity = serial.PARITY_EVEN
         elif settings['parity'] == '3 (Mark)':
-            parity = serial.PARITY_MARK
+            self.ser.parity = serial.PARITY_MARK
         elif settings['parity'] == '4 (Space)':
-            parity = serial.PARITY_SPACE
+            self.ser.parity = serial.PARITY_SPACE
 
-        #print(port)
-        #print(baud)
-        #print(parity)
-        #print(settings['parity'])
+        self.ser.timeout = self.ser_timeout # fine, slightly bad naming
+        self.ser.write_timeout = self.ser_timeout
         
-        # This is failing on Windows with an Access is Denied error
-        # (suggesting multiple access), but it only fails after an XModem
-        try:
-            self.ser = serial.Serial(
-                # short timeout so we get something like what Kermit
-                # has
-                port, baud, parity=parity, timeout=self.ser_timeout, write_timeout=self.ser_timeout)
-            self.modem = xmodem.XMODEM(self.getc, self.putc)
-        except Exception as e:
-            print(e)
-            #print('xmodem failed at serial port opening')
+        # On Windows, trying to refresh after a file transfer results
+        # in an Access Denied error. The way to avoid this is to try
+        # to open the serial port repeatedly until it works.
+        tries = 0
+        while True:
+            if tries == 4:
+                print('xmodem failed at serial port open')
+                # Too many tries, something is wrong
+                if self.use_callafter:
+                    wx.CallAfter(
+                        pub.sendMessage,
+                        f'xmodem.failed.{self.ptopic}',
+                        cmd=cmd)
+                else:
+                    pub.sendMessage(
+                        f'xmodem.failed.{self.ptopic}',
+                        cmd=cmd)
+                    
+            try:
+                self.ser.open()
 
-            if self.use_callafter:
-                # no data
-                wx.CallAfter(
-                    pub.sendMessage,
-                    f'xmodem.serial_port_error.{self.ptopic}')
-            else:
-                pub.sendMessage(
-                    f'xmodem.serial_port_error.{self.ptopic}')
-                
+            except Exception as e:
+                #print(e)
+                pass
+
+            if self.ser.is_open:
+                #print('open')
+                break
+            tries += 1
+            
             return
-        # using a retry of 1 makes it quit instantly after failure,
-        # which is really nice
+
+        self.modem = xmodem.XMODEM(self.getc, self.putc)
 
         # now we process the command
         if command == 'connect':
@@ -190,7 +199,6 @@ class XModemConnector:
                     pub.sendMessage(f'xmodem.failed.{self.ptopic}',
                                     cmd='')
                 
-            self.stream.close()
         elif 'get_connect' in command:
             # 'get_connect_overwrite' is passed by FileGetDialog, when
             # the user specifies that they would like to overwrite

@@ -96,6 +96,7 @@ class HPexGUI(wx.Frame):
         pub.subscribe(self.xmodem_disconnectdone, f'xmodem.disconnectdone.{self.topic}')
         pub.subscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
         pub.subscribe(self.xmodem_failed, f'xmodem.failed.{self.topic}')
+        pub.subscribe(self.xmodem_port_error, f'xmodem.serial_port_error.{self.topic}')
         pub.subscribe(self.xmodem_refreshdone, f'xmodem.refreshdone.{self.topic}')
         pub.subscribe(self.xmodem_transfercancelled, f'xmodem.transfercancelled.{self.topic}')
             
@@ -1055,6 +1056,8 @@ class HPexGUI(wx.Frame):
         self.enable_on_connect()
         self.xmodem_refreshdone(mem, varlist)
 
+    def xmodem_port_error(self):
+        self.xmodem_failed
     def xmodem_failed(self, cmd):
         # interestingly, the existance of self.connected means that we
         # only need one error handler event and function
@@ -1078,6 +1081,14 @@ class HPexGUI(wx.Frame):
             
         self.disable_on_disconnect()
 
+        if _system == 'Windows':
+            # XModem only, for Windows
+
+            self.set_xmodem_ui_layout(event=None)
+            # select the XModem radiobutton and disable mode change box
+            self.xmodem_radiobutton.SetValue(True)
+            self.kermit_radiobutton.Disable()
+            self.xmodem_radiobutton.Disable()
         self.connected = False
         self.connect_button.SetLabelText('Connect')
         print('xmodem_failed, self.connected is', self.connected)
@@ -1292,6 +1303,7 @@ class HPexGUI(wx.Frame):
             self.call_remote_directory()
             
 
+    # TODO: this hangs on serial port error
     def connect_callback(self, event):
         # disable to prevent double-clicking
         self.connect_button.Disable()
