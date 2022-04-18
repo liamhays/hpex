@@ -73,9 +73,6 @@ class FileSendDialog(wx.Frame):
         pub.subscribe(
             self.xmodem_failed, f'xmodem.failed.{self.topic}')
         pub.subscribe(
-            self.serial_port_error,
-            f'xmodem.serial_port_error.{self.topic}')
-        pub.subscribe(
             self.xmodem_cancelled, f'xmodem.cancelled.{self.topic}')
         pub.subscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
         # for some reason, closing the window with the close button
@@ -162,16 +159,6 @@ class FileSendDialog(wx.Frame):
             self.progress_text.SetLabelText(
                 'Progress: ' + str(progress) + '%')
         
-
-    def serial_port_error(self):
-        print('serial port error')
-        self.parent.SetStatusText(
-            f'Serial port at {self.port} unreachable.')
-        self.cancel_button.Disable()
-        XModemErrorDialog(
-            self,
-            f"HPex couldn't access {self.port}. Is it present? Try rescanning and trying to send the file again.",
-            lambda: self.on_close(event=None)).Show(True)
         
     def xmodem_failed(self, cmd):
         print('FileSendDialog: xmodem failed')
@@ -326,9 +313,6 @@ class FileSendDialog(wx.Frame):
         pub.unsubscribe(
             self.xmodem_failed, f'xmodem.failed.{self.topic}')
         pub.unsubscribe(
-            self.serial_port_error,
-            f'xmodem.serial_port_error.{self.topic}')
-        pub.unsubscribe(
             self.xmodem_cancelled, f'xmodem.cancelled.{self.topic}')
         pub.unsubscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
 
@@ -395,7 +379,6 @@ class FileGetDialog(wx.Frame):
 
         # no xmodem.newdata either
         pub.subscribe(self.xmodem_failed, f'xmodem.failed.{self.topic}')
-        pub.subscribe(self.serial_port_error, f'xmodem.serial_port_error.{self.topic}')
         pub.subscribe(self.xmodem_cancelled, f'xmodem.cancelled.{self.topic}')
         pub.subscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
         # for some reason, closing the window with the close button
@@ -508,11 +491,6 @@ class FileGetDialog(wx.Frame):
             boxmessage=f'XModem could not transfer {self.filename} from the server at {self.port}.',
             close_func=self.on_close).Show(True)
         
-    def serial_port_error(self):
-        print('FileGetDialog: serial_port_error')
-        self.xmodem_failed()
-
-
     def xmodem_cancelled(self):
         print('FileGetDialog: xmodem_cancelled')
         self.parent.SetStatusText(f'XModem file copy from {self.port} cancelled.')
@@ -608,7 +586,6 @@ class FileGetDialog(wx.Frame):
         pub.unsubscribe(self.kermit_done, f'kermit.done.{self.topic}')
 
         pub.unsubscribe(self.xmodem_failed, f'xmodem.failed.{self.topic}')
-        pub.unsubscribe(self.serial_port_error, f'xmodem.serial_port_error.{self.topic}')
         pub.unsubscribe(self.xmodem_cancelled, f'xmodem.cancelled.{self.topic}')
         pub.unsubscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
         self.Destroy()

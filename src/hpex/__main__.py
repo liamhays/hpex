@@ -11,7 +11,7 @@ class HPex(object):
     # calls HPexGUI and runs from there.
     def __init__(self):
         # Disable logging from the xmodem package.
-        logging.disable()
+       # logging.disable()
         if len(sys.argv) > 1:
             # import argparse later and only if needed
             import argparse

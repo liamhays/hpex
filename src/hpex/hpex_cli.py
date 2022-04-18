@@ -63,9 +63,6 @@ class HPexCLI:
             self.xmodem_newdata, f'xmodem.newdata.{self.topic}')
         pub.subscribe(
             self.xmodem_failed, f'xmodem.failed.{self.topic}')
-        pub.subscribe(
-            self.serial_port_error,
-            f'xmodem.serial_port_error.{self.topic}')
         pub.subscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
 
         self.settings = HPexSettingsTools.load_settings()
@@ -234,12 +231,7 @@ class HPexCLI:
         print(f'\nXModem failed to transfer {self.filename} to {self.port}.')
         # have to exit because sometimes the done event is still sent
         sys.exit(1)
-        
-    # no data
-    def serial_port_error(self):
-        print(f"\nXModem wasn't able to access {self.port}. Is it present?")
-        sys.exit(1)
-        
+                
     def xmodem_done(self, file_count, total, success, error):
         # there is no progress in XModem receive, so we can't set the
         # progress to 100 to mark completion

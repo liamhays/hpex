@@ -96,7 +96,6 @@ class HPexGUI(wx.Frame):
         pub.subscribe(self.xmodem_disconnectdone, f'xmodem.disconnectdone.{self.topic}')
         pub.subscribe(self.xmodem_done, f'xmodem.done.{self.topic}')
         pub.subscribe(self.xmodem_failed, f'xmodem.failed.{self.topic}')
-        pub.subscribe(self.xmodem_port_error, f'xmodem.serial_port_error.{self.topic}')
         pub.subscribe(self.xmodem_refreshdone, f'xmodem.refreshdone.{self.topic}')
         pub.subscribe(self.xmodem_transfercancelled, f'xmodem.transfercancelled.{self.topic}')
             
@@ -371,13 +370,7 @@ class HPexGUI(wx.Frame):
 
         self.disable_on_disconnect()
         if _system == 'Windows':
-            # XModem only, for Windows
-
-            self.set_xmodem_ui_layout(event=None)
-            # select the XModem radiobutton and disable mode change box
-            self.xmodem_radiobutton.SetValue(True)
-            self.kermit_radiobutton.Disable()
-            self.xmodem_radiobutton.Disable()
+            self.windows_disable_kermit()
         else:
             # otherwise load setting and follow that
             xmodem = HPexSettingsTools.load_settings()['start_in_xmodem']
@@ -573,6 +566,15 @@ class HPexGUI(wx.Frame):
         self.hp_files.Enable()
         if not self.xmodem_mode:
             self.run_hp_command_item.Enable(True)
+
+    def windows_disable_kermit(self):
+        # XModem only, for Windows
+        
+        self.set_xmodem_ui_layout(event=None)
+        # select the XModem radiobutton and disable mode change box
+        self.xmodem_radiobutton.SetValue(True)
+        self.kermit_radiobutton.Disable()
+        self.xmodem_radiobutton.Disable()
         
     def set_xmodem_ui_layout(self, event):
         # A connection check isn't really necessary, but it's a good
@@ -1056,8 +1058,6 @@ class HPexGUI(wx.Frame):
         self.enable_on_connect()
         self.xmodem_refreshdone(mem, varlist)
 
-    def xmodem_port_error(self):
-        self.xmodem_failed
     def xmodem_failed(self, cmd):
         # interestingly, the existance of self.connected means that we
         # only need one error handler event and function
@@ -1082,13 +1082,7 @@ class HPexGUI(wx.Frame):
         self.disable_on_disconnect()
 
         if _system == 'Windows':
-            # XModem only, for Windows
-
-            self.set_xmodem_ui_layout(event=None)
-            # select the XModem radiobutton and disable mode change box
-            self.xmodem_radiobutton.SetValue(True)
-            self.kermit_radiobutton.Disable()
-            self.xmodem_radiobutton.Disable()
+            self.windows_disable_kermit()
         self.connected = False
         self.connect_button.SetLabelText('Connect')
         print('xmodem_failed, self.connected is', self.connected)
@@ -1111,6 +1105,7 @@ class HPexGUI(wx.Frame):
                            StringTools.trim_serial_port(self.serial_port_box.GetValue()) +
                            '.')
 
+        
     def xmodem_refreshdone(self, mem, varlist):
         print('refreshdone')
         self.hpvars = varlist
@@ -1129,6 +1124,9 @@ class HPexGUI(wx.Frame):
             
         if self.connected:
             self.SetStatusText('Updated remote variables.')
+
+        if _system == 'Windows':
+            self.windows_disable_kermit()
             
     def xmodem_done(self):
         # this is triggered when a directory change occurs and is
@@ -1417,7 +1415,7 @@ class HPexGUI(wx.Frame):
         else:
             self.kermit_connector.kill_kermit()
 
-            
+        self.connect_button.Enable()
         self.connecting_dialog.Close()
         
             

@@ -11,20 +11,20 @@ import serial
 from hpex.settings import HPexSettingsTools
 from hpex.hp_variable import HPVariable
 from hpex.helpers import KermitProcessTools, XModemProcessTools # needed for checksum_to_hexstr
-
+from hpex.hp_xmodem import HPXModem
 # TODO: test what the output of Conn4x gives---do the received files
 # have the extra \x00 bytes at the end?
 
 ACK = b'\x06'
 class XModemConnector:
     def getc(self, size, timeout=.1):
-        print('getc', size)
-        data = self.ser.read(size)
-        print('data', data)
-        return data# or None
+        #print('getc', size)
+        #data = self.ser.read(size)
+        #print('data', data)
+        return self.ser.read(size) or None
                     
     def putc(self, data, timeout=.1):
-        print('putc', data)
+        #print('putc', data)
         return self.ser.write(data) or None
 
     # fname is either a string (file to get or receive), or if command
@@ -107,20 +107,14 @@ class XModemConnector:
         # On Windows, trying to refresh after a file transfer results
         # in an Access Denied error. The way to avoid this is to try
         # to open the serial port repeatedly until it works.
+
+        # TODO: this isn't working exactly right
         tries = 0
         while True:
             if tries == 4:
                 print('xmodem failed at serial port open')
                 # Too many tries, something is wrong
-                if self.use_callafter:
-                    wx.CallAfter(
-                        pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}',
-                        cmd=cmd)
-                else:
-                    pub.sendMessage(
-                        f'xmodem.failed.{self.ptopic}',
-                        cmd=cmd)
+                self.failure()
                     
             try:
                 self.ser.open()
@@ -154,8 +148,10 @@ class XModemConnector:
                     mem=int(memory), 
                     varlist=objects)
 
-        # Retries have to be high here because of the weirdness of the
-        # XModem server trying to interact with 'D'.
+        # So, we figured out how the special 'D'-mode XModem works and
+        # wrote a class similar to xmodem.XMODEM that can send files.
+        #
+        # Personally, I like mine better :).
         elif command == 'send_connect':
             print('sending file, send_connect')
             # send_connect means that HPex is connected to the XModem server
@@ -163,41 +159,24 @@ class XModemConnector:
                 self.clear_extra_bytes()
                 self.ser.flush()
                 self.sendCommand(b'P')
-                self.sendCommandPacket(Path(fname).name)
-                self.stream = Path(fname).expanduser().open('rb')
-                # 6 retries: 4 for the weird 'D' thing, and 2 for good measure.
-                self.success = self.modem.send(
-                    self.stream, retry=9, timeout=self.ser_timeout,
-                    quiet=False, callback=self.callback)
-                self.stream.close()
-            except:
+                f = Path(fname)
+                self.sendCommandPacket(f.name)
+                self.hp_modem = HPXModem(self.ser)
+                self.success = self.hp_modem.send(f.open('rb'), retry=4, callback=self.callback)
+                
+            except Exception as e:
+                print(e)
                 # we probably won't get here, but if we do, we still can
                 # throw an error in the calling dialog
                 print('xmodem failed at modem send')
                 
-                if self.use_callafter:
-                    wx.CallAfter(
-                        pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}',
-                        cmd='')
-                else:
-                    pub.sendMessage(f'xmodem.failed.{self.ptopic}',
-                                    cmd='')
-                
-                self.stream.close()
+                self.failure()
             
                 return
 
             if not self.success and not self.cancelled:
                 #print('not self.success and not self.cancelled')
-                if self.use_callafter:
-                    wx.CallAfter(
-                        pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}',
-                        cmd='')
-                else:
-                    pub.sendMessage(f'xmodem.failed.{self.ptopic}',
-                                    cmd='')
+                self.failure()
                 
         elif 'get_connect' in command:
             # 'get_connect_overwrite' is passed by FileGetDialog, when
@@ -255,29 +234,14 @@ class XModemConnector:
                 # throw an error in the calling dialog
                 #print('xmodem failed at modem recv')
                 
-                if self.use_callafter:
-                    wx.CallAfter(
-                        pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}',
-                        cmd='')
-                else:
-                    pub.sendMessage(f'xmodem.failed.{self.ptopic}',
-                                    cmd='')
-                
+                self.failure()
                 self.stream.close()
             
                 return
 
             if not self.success and not self.cancelled:
                 #print('not self.success and not self.cancelled')
-                if self.use_callafter:
-                    wx.CallAfter(
-                        pub.sendMessage,
-                        f'xmodem.failed.{self.ptopic}',
-                        cmd='')
-                else:
-                    pub.sendMessage(f'xmodem.failed.{self.ptopic}',
-                                    cmd='')
+                self.failure()
                 
 
         elif command == 'chdir':
@@ -287,10 +251,7 @@ class XModemConnector:
                 self.sendCommand(b'E')
                 self.sendCommandPacket(fname)
             except:
-                wx.CallAfter(
-                    pub.sendMessage,
-                    f'xmodem.failed.{self.ptopic}',
-                    cmd='')
+                self.failure()
                 return
 
             if not self.cancelled:
@@ -303,10 +264,7 @@ class XModemConnector:
                 self.sendCommand(b'E')
                 self.sendCommandPacket('UPDIR')
             except:
-                wx.CallAfter(
-                    pub.sendMessage,
-                    f'xmodem.failed.{self.ptopic}',
-                    cmd='')
+                self.failure()
                 return
             
             if not self.cancelled:
@@ -319,10 +277,7 @@ class XModemConnector:
                 self.sendCommand(b'E')
                 self.sendCommandPacket('HOME')
             except:
-                wx.CallAfter(
-                    pub.sendMessage,
-                    f'xmodem.failed.{self.ptopic}',
-                    cmd='')
+                self.failure()
                 return
 
             if not self.cancelled:
@@ -429,6 +384,7 @@ class XModemConnector:
 
 
     def get_hp_path(self):
+        # this creates a file with mode w+b, for reading and writing.
         tmp = tempfile.TemporaryFile()
         try:
             self.clear_extra_bytes()
@@ -571,26 +527,26 @@ class XModemConnector:
         # Restore original directory if desired, and send command 'Q'
         # to quit server on calculator.
         try:
-            self.clear_extra_bytes()
             if HPexSettingsTools.load_settings()['reset_directory_on_disconnect']:
                 print('reset directory')
                 if self.cancelled:
                     print('cancelled')
                     return
-                
+
+                pathfile.seek(0)
+                print(pathfile.read())
+                pathfile.seek(0)
+                self.clear_extra_bytes()
+                self.ser.flush()
                 self.sendCommand(b'P')
                 self.sendCommandPacket("$$$p")
+                self.hp_modem = HPXModem(self.ser)
+                self.success = self.hp_modem.send(pathfile, retry=4)
                 
                 if self.cancelled:
                     print('cancelled')
                     return
-                # XModem.send does not automatically seek to the
-                # beginning of the file
-                pathfile.seek(0)
-                self.success = self.modem.send(
-                    pathfile, retry=9, timeout=self.ser_timeout,
-                    quiet=True)# no callback
-                
+
                 if self.cancelled:
                     self.modem.abort()
                     # if we cancel at or beyond this point, the file

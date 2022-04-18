@@ -93,10 +93,10 @@ class XModemXSendConnector:
                 # no data
                 wx.CallAfter(
                     pub.sendMessage,
-                    f'xmodem.serial_port_error.{self.ptopic}')
+                    f'xmodem.failed.{self.ptopic}')
             else:
                 pub.sendMessage(
-                    f'xmodem.serial_port_error.{self.ptopic}')
+                    f'xmodem.failed.{self.ptopic}')
                 
             return
 
