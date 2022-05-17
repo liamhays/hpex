@@ -56,8 +56,9 @@ class XModemConnector:
         self.should_update = True
         # an actual cancelled variable
 
-        # connected to XModem server, so use shorter timeouts
-        self.ser_timeout = .5
+        # Sending 1029 bytes (one 1024-byte XModem packet) at 9600
+        # baud takes .86 seconds.
+        self.ser_timeout = 1
 
             
         self.cancelled = False
@@ -161,8 +162,8 @@ class XModemConnector:
                 self.sendCommand(b'P')
                 f = Path(fname)
                 self.sendCommandPacket(f.name)
-                self.hp_modem = HPXModem(self.ser)
-                self.success = self.hp_modem.send(f.open('rb'), retry=4, callback=self.callback)
+                self.modem = HPXModem(self.ser)
+                self.success = self.modem.send(f.open('rb'), retry=4, callback=self.callback)
                 
             except Exception as e:
                 print(e)
@@ -420,9 +421,14 @@ class XModemConnector:
         # Start by getting the free memory.
         try:
             self.clear_extra_bytes()
+            self.ser.flush()
             self.sendCommand(b'M')
+            # TODO: I think something is wrong with how we complete a transfer
+            #time.sleep(.5)
+            #self.ser.timeout = 3
             memory = self.getCommandPacket()
             print('memory in try', memory)
+            #self.ser.timeout = self.ser_timeout
             self.clear_extra_bytes()
         except:
             self.failure()
@@ -540,14 +546,11 @@ class XModemConnector:
                 self.ser.flush()
                 self.sendCommand(b'P')
                 self.sendCommandPacket("$$$p")
-                self.hp_modem = HPXModem(self.ser)
-                self.success = self.hp_modem.send(pathfile, retry=4)
+                self.modem = HPXModem(self.ser)
+                self.success = self.modem.send(pathfile, retry=4)
                 
                 if self.cancelled:
                     print('cancelled')
-                    return
-
-                if self.cancelled:
                     self.modem.abort()
                     # if we cancel at or beyond this point, the file
                     # has probably already been sent. we should delete

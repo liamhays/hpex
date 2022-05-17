@@ -7,6 +7,8 @@ _system = platform.system()
 # TODO: move from os.path calls to pathlib calls everywhere
 # TODO: add expanduser() calls to all pathlib calls for Windows
 # TODO: Some kind of logo, anything, for Windows
+# TODO: is standalone XSEND cancellation functional?
+# TODO: disable radiobuttons just like connect button when connect initiated
 from pathlib import Path
 import os
 
@@ -70,10 +72,10 @@ class HPexGUI(wx.Frame):
         # self.current_local_path is maintained as a Path object. It
         # only becomes a string when it has to be used in something
         # that doesn't support Paths directly.
-        #self.current_local_path = Path('/home/liam/Dropbox/comp/hp/48/projects/cal/')
+        self.current_local_path = Path('/home/liam/Downloads/jazz68')
         #self.current_local_path = Path('/home/liam/tests/')
-        self.current_local_path = Path(
-            HPexSettingsTools.load_settings()['startup_dir'])
+        #self.current_local_path = Path(
+        #    HPexSettingsTools.load_settings()['startup_dir'])
         
         # in this class, we are only using 'remote directory', so
         # there's no need to bind kermit.newdata. However, other
