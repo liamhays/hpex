@@ -1,4 +1,11 @@
 # hpex
+**HPex is deprecated (because it's actually not very good) and will
+receive no more development effort from me. This page remains for
+historical purposes. Please use
+[Alum](https://github.com/liamhays/alum) instead.** Also note that the
+current state of the `main` branch in this repository is basically
+broken.
+ 
 HPex (pronounced "h-pecks", short for "HP Exchange") is a RPL HP
 calculator to Linux transfer tool with graphical and command line
 interfaces, plus features found in no other Linux<->HP transfer tool.
